@@ -1,0 +1,48 @@
+name: Security Check
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Check for .env file
+      run: |
+        if [ -f ".env" ]; then
+          echo "❌ ERROR: .env file found in repository!"
+          echo "Remove this file and use .env.example instead."
+          exit 1
+        fi
+        echo "✅ No .env file found"
+    
+    - name: Check .gitignore exists and blocks .env
+      run: |
+        if [ ! -f ".gitignore" ]; then
+          echo "❌ ERROR: .gitignore file is missing!"
+          exit 1
+        fi
+        if ! grep -q "\.env" .gitignore; then
+          echo "❌ ERROR: .gitignore does not block .env file!"
+          exit 1
+        fi
+        echo "✅ .gitignore properly configured"
+    
+    - name: Run security check script
+      run: |
+        python security_check.py
+    
+    - name: Scan for secrets with GitLeaks (optional)
+      uses: gitleaks/gitleaks-action@v2
+      if: false  # Enable by setting to true and configuring GITLEAKS_LICENSE

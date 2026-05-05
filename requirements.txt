@@ -1,0 +1,11 @@
+streamlit==1.29.0
+pandas==2.1.4
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+rapidfuzz==3.5.2
+pyvis==0.3.2
+python-dotenv==1.0.0
+networkx==3.2.1
+phonetics==1.0.5
+python-dateutil==2.8.2
+numpy==1.26.2
