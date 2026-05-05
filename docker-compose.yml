@@ -1,0 +1,43 @@
+# ApexForge AI — Local Development Stack
+# Usage: docker compose up --build
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: apexforge-db
+    environment:
+      POSTGRES_USER: apexforge
+      POSTGRES_PASSWORD: apexforge_dev_password
+      POSTGRES_DB: apexforge_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apexforge -d apexforge_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: apexforge-app
+    environment:
+      DATABASE_URL: postgresql://apexforge:apexforge_dev_password@db:5432/apexforge_db
+      APP_ENV: development
+      DEBUG: "false"
+    ports:
+      - "8501:8501"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./apexforge_rich_sample.csv:/app/apexforge_rich_sample.csv:ro
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

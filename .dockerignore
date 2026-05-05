@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+secrets.json
+credentials.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+
+# Documentation (keep README for image context)
+docs/
+
+# Sample data (optional, can mount at runtime)
+*.csv
+
+# Pre-commit hooks
+pre-commit-hook.sh
+security_check.py
+
+# Docker files (avoid recursion)
+Dockerfile
+.dockerignore
+docker-compose.yml

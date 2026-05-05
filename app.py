@@ -14,6 +14,7 @@ Highlights:
 from __future__ import annotations
 
 import csv
+import html
 import io
 import logging
 import os
@@ -60,6 +61,8 @@ st.set_page_config(
 load_dotenv()
 
 
+MAX_UPLOAD_SIZE_MB = 50
+
 REQUIRED_COLUMNS = [
     "business_name",
     "pan",
@@ -94,68 +97,530 @@ SAMPLE_ROWS = [
 
 CSS = """
 <style>
-    .block-container {
-        padding-top: 1.25rem;
-        padding-bottom: 2rem;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    :root {
+        --bg-deep: #050810;
+        --bg-surface: rgba(13, 17, 28, 0.65);
+        --bg-card: rgba(255, 255, 255, 0.03);
+        --border-subtle: rgba(255, 255, 255, 0.06);
+        --border-glow: rgba(0, 245, 212, 0.15);
+        --text-primary: #f0f0f5;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent-cyan: #00f5d4;
+        --accent-purple: #7b2ff7;
+        --accent-pink: #f72585;
+        --accent-orange: #ff9f1c;
+        --accent-blue: #3b82f6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #60a5fa;
     }
+
+    * {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .stApp {
+        background: var(--bg-deep) !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+
+    .main .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 3rem;
+        max-width: 1400px;
+    }
+
+    /* Animated mesh gradient background */
+    .stApp::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background:
+            radial-gradient(ellipse 80% 50% at 20% 40%, rgba(123, 47, 247, 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0, 245, 212, 0.06) 0%, transparent 50%),
+            radial-gradient(ellipse 70% 60% at 50% 90%, rgba(247, 37, 133, 0.05) 0%, transparent 50%),
+            radial-gradient(ellipse 50% 30% at 90% 70%, rgba(255, 159, 28, 0.04) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+        animation: meshShift 20s ease-in-out infinite alternate;
+    }
+
+    @keyframes meshShift {
+        0% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(-2%, 1%) scale(1.02); }
+        66% { transform: translate(1%, -1%) scale(0.98); }
+        100% { transform: translate(0, 0) scale(1); }
+    }
+
+    /* Hero Section */
     .hero {
-        padding: 1.25rem 1.4rem;
-        border-radius: 24px;
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #312e81 100%);
-        color: white;
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
-        margin-bottom: 1rem;
+        position: relative;
+        padding: 2.5rem 2rem;
+        border-radius: 28px;
+        background:
+            linear-gradient(135deg, rgba(13, 17, 40, 0.9) 0%, rgba(25, 20, 60, 0.85) 50%, rgba(40, 15, 50, 0.9) 100%);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(0, 245, 212, 0.12) 0%, transparent 70%);
+        animation: pulseGlow 6s ease-in-out infinite;
+    }
+    .hero::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -10%;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(123, 47, 247, 0.1) 0%, transparent 70%);
+        animation: pulseGlow 8s ease-in-out infinite reverse;
+    }
+    @keyframes pulseGlow {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.1); }
     }
     .hero h1 {
+        position: relative;
+        z-index: 1;
         margin: 0;
-        font-size: 2rem;
-        line-height: 1.15;
+        font-size: 2.6rem;
+        line-height: 1.1;
         font-weight: 800;
+        background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 50%, var(--accent-purple) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.02em;
     }
     .hero p {
-        margin: 0.35rem 0 0 0;
-        opacity: 0.9;
-        font-size: 0.98rem;
+        position: relative;
+        z-index: 1;
+        margin: 0.6rem 0 0 0;
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+        font-weight: 400;
+        max-width: 600px;
     }
+
+    /* Glass Cards / Surfaces */
     .surface {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border-subtle);
         border-radius: 20px;
-        padding: 1rem;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        padding: 1.5rem;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .muted {
-        color: #6b7280;
+    .surface:hover {
+        border-color: var(--border-glow);
+        box-shadow: 0 8px 40px rgba(0, 245, 212, 0.08), 0 4px 24px rgba(0, 0, 0, 0.3);
+        transform: translateY(-2px);
+    }
+
+    /* Section Typography */
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        color: var(--text-primary);
+        letter-spacing: -0.01em;
+    }
+    .section-subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 1.25rem;
         font-size: 0.95rem;
+        font-weight: 400;
     }
+
+    /* Stats / Metric Cards */
+    .metric-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--border-subtle);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .metric-card:hover {
+        border-color: var(--border-glow);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 32px rgba(0, 245, 212, 0.06);
+    }
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink));
+        opacity: 0.6;
+    }
+    .metric-card.cyan::before { background: linear-gradient(90deg, var(--accent-cyan), #00c9a7); }
+    .metric-card.purple::before { background: linear-gradient(90deg, var(--accent-purple), #a855f7); }
+    .metric-card.pink::before { background: linear-gradient(90deg, var(--accent-pink), #ec4899); }
+    .metric-card.orange::before { background: linear-gradient(90deg, var(--accent-orange), #fbbf24); }
+    .metric-card .metric-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.5rem;
+    }
+    .metric-card .metric-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+    .metric-card .metric-delta {
+        font-size: 0.8rem;
+        margin-top: 0.4rem;
+        font-weight: 500;
+    }
+
+    /* Status Pills */
     .stat-pill {
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        padding: 0.35rem 0.75rem;
+        padding: 0.4rem 0.85rem;
         border-radius: 999px;
-        font-size: 0.82rem;
-        font-weight: 700;
+        font-size: 0.78rem;
+        font-weight: 600;
         margin: 0.2rem 0.25rem 0.2rem 0;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
     }
-    .pill-green { background: #dcfce7; color: #166534; }
-    .pill-amber { background: #fef3c7; color: #92400e; }
-    .pill-red { background: #fee2e2; color: #991b1b; }
-    .pill-blue { background: #dbeafe; color: #1d4ed8; }
-    .pill-purple { background: #ede9fe; color: #6d28d9; }
+    .pill-green {
+        background: rgba(16, 185, 129, 0.12);
+        color: #34d399;
+        border-color: rgba(16, 185, 129, 0.2);
+    }
+    .pill-amber {
+        background: rgba(245, 158, 11, 0.12);
+        color: #fbbf24;
+        border-color: rgba(245, 158, 11, 0.2);
+    }
+    .pill-red {
+        background: rgba(239, 68, 68, 0.12);
+        color: #f87171;
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+    .pill-blue {
+        background: rgba(59, 130, 246, 0.12);
+        color: #60a5fa;
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+    .pill-purple {
+        background: rgba(123, 47, 247, 0.12);
+        color: #a78bfa;
+        border-color: rgba(123, 47, 247, 0.2);
+    }
+    .pill-cyan {
+        background: rgba(0, 245, 212, 0.12);
+        color: #2dd4bf;
+        border-color: rgba(0, 245, 212, 0.2);
+    }
+    .stat-pill:hover {
+        transform: scale(1.05);
+    }
+
+    /* Notes & Muted text */
+    .muted {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
     .small-note {
-        font-size: 0.83rem;
-        color: #6b7280;
-        line-height: 1.45;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        line-height: 1.5;
     }
-    .section-title {
-        font-size: 1.15rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, rgba(13, 17, 28, 0.95) 0%, rgba(10, 15, 26, 0.98) 100%) !important;
+        border-right: 1px solid var(--border-subtle) !important;
     }
-    .section-subtitle {
-        color: #6b7280;
-        margin-bottom: 0.8rem;
+    [data-testid="stSidebar"] .stRadio > label {
+        color: var(--text-secondary) !important;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+    [data-testid="stSidebar"] .stRadio > div > div > label {
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-radius: 12px !important;
+        padding: 0.6rem 0.8rem !important;
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        margin-bottom: 0.25rem !important;
+    }
+    [data-testid="stSidebar"] .stRadio > div > div > label:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+        color: var(--text-primary) !important;
+    }
+    [data-testid="stSidebar"] .stRadio > div > div > label[data-selected="true"] {
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.1), rgba(123, 47, 247, 0.1)) !important;
+        border-color: rgba(0, 245, 212, 0.2) !important;
+        color: var(--accent-cyan) !important;
+        font-weight: 600 !important;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        padding: 0.6rem 1.2rem !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        border: 1px solid transparent !important;
+        letter-spacing: 0.01em;
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
+        color: #050810 !important;
+        border: none !important;
+        box-shadow: 0 4px 16px rgba(0, 245, 212, 0.25) !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        box-shadow: 0 6px 24px rgba(0, 245, 212, 0.35) !important;
+        transform: translateY(-1px) !important;
+    }
+    .stButton > button[kind="secondary"] {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-subtle) !important;
+    }
+    .stButton > button[kind="secondary"]:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--border-glow) !important;
+    }
+
+    /* DataFrames / Tables */
+    .stDataFrame {
+        border-radius: 16px !important;
+        overflow: hidden !important;
+    }
+    .stDataFrame table {
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 16px !important;
+    }
+    .stDataFrame th {
+        background: rgba(255, 255, 255, 0.04) !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        font-size: 0.8rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        padding: 0.75rem 1rem !important;
+    }
+    .stDataFrame td {
+        color: var(--text-secondary) !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        padding: 0.65rem 1rem !important;
+        font-size: 0.88rem !important;
+    }
+    .stDataFrame tr:hover td {
+        background: rgba(255, 255, 255, 0.02) !important;
+    }
+
+    /* Progress Bar */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink)) !important;
+        border-radius: 999px !important;
+        box-shadow: 0 0 12px rgba(0, 245, 212, 0.3) !important;
+    }
+    .stProgress > div {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 999px !important;
+    }
+
+    /* Sliders */
+    .stSlider [data-testid="stThumbValue"] {
+        color: var(--accent-cyan) !important;
+        font-weight: 600;
+    }
+    .stSlider [role="slider"] {
+        background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
+        box-shadow: 0 0 12px rgba(0, 245, 212, 0.4) !important;
+    }
+
+    /* Inputs */
+    .stTextInput > div > div > input,
+    .stSelectbox > div > div > div,
+    .stFileUploader > div > div > div {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 12px !important;
+        color: var(--text-primary) !important;
+        font-size: 0.9rem !important;
+    }
+    .stTextInput > div > div > input:focus,
+    .stSelectbox > div > div > div:focus {
+        border-color: var(--accent-cyan) !important;
+        box-shadow: 0 0 0 3px rgba(0, 245, 212, 0.1) !important;
+    }
+
+    /* Expander */
+    .stExpander {
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 16px !important;
+        background: var(--bg-card) !important;
+        overflow: hidden;
+    }
+    .stExpander > div:first-child {
+        background: rgba(255, 255, 255, 0.02) !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+    }
+
+    /* Info / Warning / Error boxes */
+    .stAlert {
+        border-radius: 14px !important;
+        border: 1px solid transparent !important;
+        background: var(--bg-card) !important;
+        backdrop-filter: blur(10px);
+    }
+    .stAlert[data-baseweb="notification"][data-kind="info"] {
+        border-color: rgba(59, 130, 246, 0.2) !important;
+        background: rgba(59, 130, 246, 0.06) !important;
+    }
+    .stAlert[data-baseweb="notification"][data-kind="warning"] {
+        border-color: rgba(245, 158, 11, 0.2) !important;
+        background: rgba(245, 158, 11, 0.06) !important;
+    }
+    .stAlert[data-baseweb="notification"][data-kind="error"] {
+        border-color: rgba(239, 68, 68, 0.2) !important;
+        background: rgba(239, 68, 68, 0.06) !important;
+    }
+    .stAlert[data-baseweb="notification"][data-kind="success"] {
+        border-color: rgba(16, 185, 129, 0.2) !important;
+        background: rgba(16, 185, 129, 0.06) !important;
+    }
+
+    /* Charts */
+    .stChart {
+        border-radius: 16px !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-subtle) !important;
+        padding: 1rem;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Loading / Spinner */
+    .stSpinner > div > div {
+        border-color: var(--accent-cyan) !important;
+        border-top-color: transparent !important;
+    }
+
+    /* Network Graph container */
+    .network-container {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Review cards */
+    .review-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 16px;
+        padding: 1.25rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.25s ease;
+    }
+    .review-card:hover {
+        border-color: var(--border-glow);
+        box-shadow: 0 4px 20px rgba(0, 245, 212, 0.05);
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* Focus accessibility */
+    *:focus-visible {
+        outline: 2px solid var(--accent-cyan) !important;
+        outline-offset: 2px !important;
+    }
+
+    /* Divider */
+    hr {
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
+        margin: 1.5rem 0;
+    }
+
+    /* Code blocks */
+    .stCode pre {
+        background: rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 12px !important;
+        color: var(--accent-cyan) !important;
+    }
+
+    /* Caption */
+    .stCaption {
+        color: var(--text-muted) !important;
+        font-size: 0.8rem !important;
     }
 </style>
 """
@@ -193,15 +658,20 @@ def normalize_col(name: str) -> str:
     return "".join(ch for ch in str(name).lower() if ch.isalnum())
 
 
-def safe_text(value: Any, default: str = "N/A") -> str:
+def safe_text(value: Any, default: str = "N/A", escape_html: bool = False) -> str:
     if value is None:
-        return default
-    try:
-        if pd.isna(value):
-            return default
-    except Exception:
-        pass
-    return str(value)
+        out = default
+    else:
+        try:
+            if pd.isna(value):
+                out = default
+            else:
+                out = str(value)
+        except Exception:
+            out = default
+    if escape_html:
+        out = html.escape(out)
+    return out
 
 
 def format_confidence(value: Any) -> str:
@@ -444,12 +914,37 @@ def pipeline_process(df: pd.DataFrame) -> None:
     st.success(f"Processing complete. Batch ID: {batch_id}")
 
 
+def metric_card(label: str, value: Any, variant: str = "cyan", delta: Optional[str] = None) -> str:
+    delta_html = f'<div class="metric-delta">{delta}</div>' if delta else ""
+    return f"""
+    <div class="metric-card {variant}">
+        <div class="metric-label">{label}</div>
+        <div class="metric-value">{value}</div>
+        {delta_html}
+    </div>
+    """
+
+
 def render_header() -> None:
+    db_status = (
+        '<span class="stat-pill pill-cyan">Database Connected</span>'
+        if st.session_state.db_initialized
+        else '<span class="stat-pill pill-amber">Local Mode</span>'
+    )
+    batch_status = (
+        f'<span class="stat-pill pill-blue">Batch {st.session_state.batch_id}</span>'
+        if st.session_state.processing_complete and st.session_state.batch_id
+        else ""
+    )
     st.markdown(
-        """
+        f"""
         <div class="hero">
-            <h1>🏢 ApexForge AI</h1>
-            <p>Unified Business Identity System for clean uploads, smart matching, and fast UBID exploration.</p>
+            <h1>ApexForge AI</h1>
+            <p>Unified Business Identity System — clean uploads, intelligent matching, and UBID exploration at scale.</p>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {db_status}
+                {batch_status}
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -458,35 +953,53 @@ def render_header() -> None:
 
 def render_sidebar() -> str:
     with st.sidebar:
-        st.markdown("### ApexForge AI")
-        st.caption("Business identity pipeline")
-        st.divider()
+        st.markdown(
+            """
+            <div style="padding: 0.5rem 0 1rem 0;">
+                <div style="font-size: 1.15rem; font-weight: 800; color: #f0f0f5; letter-spacing: -0.01em;">
+                    ApexForge AI
+                </div>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem; font-weight: 500;">
+                    BUSINESS IDENTITY PIPELINE
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
 
         db_col1, db_col2 = st.columns([1, 1])
         with db_col1:
-            if st.button("Connect DB", use_container_width=True):
+            if st.button("Connect DB", use_container_width=True, type="secondary"):
                 init_database()
         with db_col2:
-            if st.button("Reset", use_container_width=True):
+            if st.button("Reset", use_container_width=True, type="secondary"):
                 reset_processing_state()
                 st.rerun()
 
+        status_pills = []
         if st.session_state.db_initialized:
-            st.markdown("<span class='stat-pill pill-green'>Database connected</span>", unsafe_allow_html=True)
+            status_pills.append("<span class='stat-pill pill-cyan'>Database Connected</span>")
         else:
-            st.markdown("<span class='stat-pill pill-amber'>Local mode</span>", unsafe_allow_html=True)
-
+            status_pills.append("<span class='stat-pill pill-amber'>Local Mode</span>")
         if st.session_state.processing_complete:
-            st.markdown(f"<span class='stat-pill pill-blue'>Batch ready</span>", unsafe_allow_html=True)
+            status_pills.append("<span class='stat-pill pill-blue'>Batch Ready</span>")
+        if status_pills:
+            st.markdown(" ".join(status_pills), unsafe_allow_html=True)
 
-        st.divider()
+        st.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
+
+        nav_options = ["Upload", "Dashboard", "Results", "Network Graph", "UBID Explorer", "Review Queue", "Analytics"]
+        nav_index = 0 if not st.session_state.processing_complete else 1
         page = st.radio(
             "Navigate",
-            ["Upload", "Dashboard", "Results", "Network Graph", "UBID Explorer", "Review Queue", "Analytics"],
-            index=0 if not st.session_state.processing_complete else 1,
+            nav_options,
+            index=nav_index,
+            label_visibility="visible",
         )
 
-        st.divider()
+        st.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
         st.markdown(
             """
             <div class="small-note">
@@ -500,7 +1013,7 @@ def render_sidebar() -> str:
 
 
 def render_upload_page() -> None:
-    st.markdown("<div class='section-title'>Upload business data</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Upload Business Data</div>", unsafe_allow_html=True)
     st.markdown("<div class='section-subtitle'>Clean. Match. Assign. Review. Export.</div>", unsafe_allow_html=True)
 
     left, right = st.columns([2.2, 1], gap="large")
@@ -516,6 +1029,12 @@ def render_upload_page() -> None:
         )
 
         if uploaded_file is not None:
+            file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
+            if file_size_mb > MAX_UPLOAD_SIZE_MB:
+                st.error(f"File too large ({file_size_mb:.1f} MB). Max allowed: {MAX_UPLOAD_SIZE_MB} MB.")
+                st.markdown("</div>", unsafe_allow_html=True)
+                return
+
             df = None
             parse_errors: List[str] = []
 
@@ -547,11 +1066,13 @@ def render_upload_page() -> None:
 
             mapped, detected, missing = auto_map_columns(df)
 
-            top1, top2, top3, top4 = st.columns(4)
-            top1.metric("Rows", len(mapped))
-            top2.metric("Columns", len(mapped.columns))
-            top3.metric("Mapped", len(detected))
-            top4.metric("Missing", len(missing))
+            st.markdown("<div style='margin: 1rem 0;'>", unsafe_allow_html=True)
+            m1, m2, m3, m4 = st.columns(4)
+            m1.markdown(metric_card("Rows", f"{len(mapped):,}", "cyan"), unsafe_allow_html=True)
+            m2.markdown(metric_card("Columns", len(mapped.columns), "purple"), unsafe_allow_html=True)
+            m3.markdown(metric_card("Mapped", len(detected), "pink"), unsafe_allow_html=True)
+            m4.markdown(metric_card("Missing", len(missing), "orange"), unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
             if detected:
                 with st.expander("Auto-mapped columns", expanded=False):
@@ -564,7 +1085,7 @@ def render_upload_page() -> None:
             with st.expander("Preview data", expanded=True):
                 st.dataframe(mapped.head(10), use_container_width=True)
 
-            st.markdown("---")
+            st.markdown("<hr>", unsafe_allow_html=True)
             if st.button("Process file now", type="primary", use_container_width=True):
                 pipeline_process(mapped)
                 st.rerun()
@@ -584,7 +1105,7 @@ def render_upload_page() -> None:
             mime="text/csv",
             use_container_width=True,
         )
-        st.markdown("---")
+        st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("**Expected structure**")
         st.code(",".join(REQUIRED_COLUMNS))
         st.markdown(
@@ -598,24 +1119,48 @@ def render_dashboard() -> None:
     st.markdown("<div class='section-title'>Dashboard</div>", unsafe_allow_html=True)
 
     if not st.session_state.processing_complete:
-        st.info("Process a file first to unlock the dashboard.")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">Dashboard Locked</div>
+                <div>Process a file first to unlock the dashboard and view insights.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     df = st.session_state.df_processed
     stats = compute_local_stats(df, st.session_state.matches, st.session_state.match_groups, st.session_state.ubid_assignments)
 
+    total = stats["total_records"] or 1
+    match_rate = (stats["matches_found"] / total) * 100
+    solo_rate = ((stats["new_records"] - stats["needs_review"]) / total) * 100 if stats["new_records"] else 0
+    dup_rate = (stats["auto_merge"] / total) * 100 if total else 0
+
+    avg_confidence = 0.0
+    if "match_confidence" in df.columns and not df["match_confidence"].isna().all():
+        avg_confidence = float(df["match_confidence"].mean())
+
+    st.markdown("<div style='margin-bottom: 1rem;'>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Records", stats["total_records"])
-    c2.metric("UBIDs", stats["ubids_generated"])
-    c3.metric("Matches", stats["matches_found"])
-    c4.metric("Reviews", stats["pending_reviews"])
+    c1.markdown(metric_card("Total Records", f"{stats['total_records']:,}", "cyan"), unsafe_allow_html=True)
+    c2.markdown(metric_card("UBIDs Generated", f"{stats['ubids_generated']:,}", "purple"), unsafe_allow_html=True)
+    c3.markdown(metric_card("Match Rate", f"{match_rate:.1f}%", "pink"), unsafe_allow_html=True)
+    c4.markdown(metric_card("Avg Confidence", f"{avg_confidence:.1f}%", "orange"), unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='surface'>", unsafe_allow_html=True)
     left, right = st.columns(2, gap="large")
 
     with left:
-        st.markdown("**Business status**")
-        st.bar_chart(pd.Series({"Active": stats["active_count"], "Dormant": stats["dormant_count"], "Closed": stats["closed_count"]}))
+        st.markdown("**Business Status**")
+        status_data = pd.DataFrame({
+            "Status": ["Active", "Dormant", "Closed"],
+            "Count": [stats["active_count"], stats["dormant_count"], stats["closed_count"]],
+        })
+        st.bar_chart(status_data, x="Status", y="Count", use_container_width=True)
         st.markdown(
             f"<span class='stat-pill pill-green'>Active {stats['active_count']}</span>"
             f"<span class='stat-pill pill-amber'>Dormant {stats['dormant_count']}</span>"
@@ -624,22 +1169,117 @@ def render_dashboard() -> None:
         )
 
     with right:
-        st.markdown("**Match summary**")
-        st.metric("Match groups", stats["match_groups"])
-        st.metric("Auto merge", stats["auto_merge"])
-        st.metric("Needs review", stats["needs_review"])
-        st.metric("New records", stats["new_records"])
+        st.markdown("**Match Decisions**")
+        decision_data = pd.DataFrame({
+            "Decision": ["Auto Merge", "Needs Review", "New"],
+            "Count": [stats["auto_merge"], stats["needs_review"], stats["new_records"]],
+        })
+        st.bar_chart(decision_data, x="Decision", y="Count", use_container_width=True)
+        st.markdown(
+            f"<span class='stat-pill pill-green'>Auto Merge {stats['auto_merge']}</span>"
+            f"<span class='stat-pill pill-amber'>Review {stats['needs_review']}</span>"
+            f"<span class='stat-pill pill-blue'>New {stats['new_records']}</span>",
+            unsafe_allow_html=True,
+        )
 
-    st.markdown("---")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="large")
+
+    with c1:
+        st.markdown("**Match Confidence Distribution**")
+        if "match_confidence" in df.columns:
+            conf_series = df["match_confidence"].dropna()
+            if not conf_series.empty:
+                bins = pd.cut(conf_series, bins=[0, 25, 50, 75, 90, 100], labels=["0–25%", "26–50%", "51–75%", "76–90%", "91–100%"], include_lowest=True)
+                conf_df = bins.value_counts().sort_index().reset_index()
+                conf_df.columns = ["Confidence Range", "Count"]
+                conf_df["Confidence Range"] = conf_df["Confidence Range"].astype(str)
+                st.bar_chart(conf_df, x="Confidence Range", y="Count", use_container_width=True)
+            else:
+                st.info("No confidence data available")
+        else:
+            st.info("No confidence data available")
+
+    with c2:
+        st.markdown("**Match Tier Distribution**")
+        if "match_tier" in df.columns:
+            tier_counts = df["match_tier"].value_counts()
+            tier_df = tier_counts.reset_index()
+            tier_df.columns = ["Tier", "Count"]
+            tier_df["Tier"] = tier_df["Tier"].astype(str)
+            st.bar_chart(tier_df, x="Tier", y="Count", use_container_width=True)
+            pills = ""
+            for tier, count in tier_counts.items():
+                cls = {
+                    "Tier1": "pill-green",
+                    "Tier2": "pill-blue",
+                    "Tier3": "pill-amber",
+                    "New": "pill-purple",
+                }.get(tier, "pill-cyan")
+                pills += f"<span class='stat-pill {cls}'>{tier} {count}</span>"
+            st.markdown(pills, unsafe_allow_html=True)
+        else:
+            st.info("No tier data available")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="large")
+
+    with c1:
+        st.markdown("**Geographic — Top States**")
+        if "state" in df.columns:
+            top_states = df["state"].value_counts().head(10).reset_index()
+            top_states.columns = ["State", "Count"]
+            st.bar_chart(top_states, x="State", y="Count", use_container_width=True)
+        else:
+            st.info("No state data available")
+
+    with c2:
+        st.markdown("**Department / Industry Breakdown**")
+        if "department" in df.columns:
+            dept_counts = df["department"].value_counts().head(10).reset_index()
+            dept_counts.columns = ["Department", "Count"]
+            st.bar_chart(dept_counts, x="Department", y="Count", use_container_width=True)
+        else:
+            st.info("No department data available")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+    st.markdown("**Data Quality Overview**")
+    dq_cols = [c for c in ["business_name", "pan", "gstin", "address", "district", "state"] if c in df.columns]
+    if dq_cols:
+        missing_rows = []
+        for col in dq_cols:
+            missing = int(df[col].isna().sum())
+            pct = (missing / len(df)) * 100 if len(df) else 0
+            missing_rows.append([col.replace("_", " ").title(), f"{missing:,}", f"{pct:.1f}%"])
+        dq_df = pd.DataFrame(missing_rows, columns=["Field", "Missing", "Pct"])
+        st.dataframe(dq_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No data quality fields available")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+    st.markdown("**Processing Summary**")
     summary_df = pd.DataFrame(
         [
-            ["Batch ID", st.session_state.batch_id],
-            ["Total Records", stats["total_records"]],
-            ["UBIDs Generated", stats["ubids_generated"]],
-            ["Matches Found", stats["matches_found"]],
-            ["Active", stats["active_count"]],
-            ["Dormant", stats["dormant_count"]],
-            ["Closed", stats["closed_count"]],
+            ["Batch ID", safe_text(st.session_state.batch_id)],
+            ["Total Records", f"{stats['total_records']:,}"],
+            ["UBIDs Generated", f"{stats['ubids_generated']:,}"],
+            ["Matches Found", f"{stats['matches_found']:,}"],
+            ["Match Groups", f"{stats['match_groups']:,}"],
+            ["Auto Merge", f"{stats['auto_merge']:,}"],
+            ["Needs Review", f"{stats['needs_review']:,}"],
+            ["New Records", f"{stats['new_records']:,}"],
+            ["Active", f"{stats['active_count']:,}"],
+            ["Dormant", f"{stats['dormant_count']:,}"],
+            ["Closed", f"{stats['closed_count']:,}"],
+            ["Duplicate Rate", f"{dup_rate:.1f}%"],
+            ["Solo Record Rate", f"{solo_rate:.1f}%"],
         ],
         columns=["Metric", "Value"],
     )
@@ -651,16 +1291,27 @@ def render_results_page() -> None:
     st.markdown("<div class='section-title'>Results</div>", unsafe_allow_html=True)
 
     if not st.session_state.processing_complete:
-        st.info("Process a file first to see results.")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">🔍</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">No Results Yet</div>
+                <div>Process a file first to see results.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     df = st.session_state.df_processed.copy()
 
+    st.markdown("<div class='surface' style='margin-bottom: 1rem;'>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     status_filter = c1.selectbox("Status", ["All", "Active", "Dormant", "Closed"])
     tier_filter = c2.selectbox("Tier", ["All", "Tier1", "Tier2", "Tier3", "New"])
     confidence_min = c3.slider("Min confidence", 0, 100, 0)
     search_term = c4.text_input("Search")
+    st.markdown("</div>", unsafe_allow_html=True)
 
     filtered = df.copy()
     if status_filter != "All" and "business_status" in filtered.columns:
@@ -677,7 +1328,7 @@ def render_results_page() -> None:
                 mask = mask | filtered[col].astype(str).str.lower().str.contains(term, na=False)
         filtered = filtered[mask]
 
-    st.caption(f"Showing {len(filtered)} of {len(df)} records")
+    st.caption(f"Showing {len(filtered):,} of {len(df):,} records")
 
     display_cols = [
         c for c in [
@@ -707,11 +1358,12 @@ def build_pyvis_network(df: pd.DataFrame, matches: List[MatchResult]) -> Optiona
     net.barnes_hut()
 
     for idx, row in df.iterrows():
-        name = safe_text(row.get("business_name"), f"Record {idx}")
-        ubid = safe_text(row.get("ubid"), f"ROW-{idx}")
+        name = safe_text(row.get("business_name"), f"Record {idx}", escape_html=True)
+        ubid = safe_text(row.get("ubid"), f"ROW-{idx}", escape_html=True)
         title = (
-            f"<b>{name}</b><br>UBID: {ubid}<br>Status: {safe_text(row.get('business_status'))}"
-            f"<br>Tier: {safe_text(row.get('match_tier'))}<br>Confidence: {safe_text(row.get('match_confidence'))}"
+            f"<b>{name}</b><br>UBID: {ubid}<br>Status: {safe_text(row.get('business_status'), escape_html=True)}"
+            f"<br>Tier: {safe_text(row.get('match_tier'), escape_html=True)}"
+            f"<br>Confidence: {safe_text(row.get('match_confidence'), escape_html=True)}"
         )
         tier = row.get("match_tier")
         color = {
@@ -734,14 +1386,26 @@ def build_pyvis_network(df: pd.DataFrame, matches: List[MatchResult]) -> Optiona
 
 
 def render_network_graph() -> None:
-    st.markdown("<div class='section-title'>Network graph</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Network Graph</div>", unsafe_allow_html=True)
 
     if not st.session_state.processing_complete:
-        st.info("Process a file first to see the network.")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">🕸️</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">Network Not Available</div>
+                <div>Process a file first to visualize the match network.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
-    show_only_groups = st.checkbox("Show only matched groups", value=False)
-    show_review = st.checkbox("Include review matches", value=True)
+    st.markdown("<div class='surface' style='margin-bottom: 1rem;'>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    show_only_groups = c1.checkbox("Show only matched groups", value=False)
+    show_review = c2.checkbox("Include review matches", value=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     df = st.session_state.df_processed.copy()
     matches = st.session_state.matches if show_review else [m for m in st.session_state.matches if m.decision == "AutoMerge"]
@@ -771,6 +1435,7 @@ def render_network_graph() -> None:
                     )
             matches = remapped
 
+    st.markdown("<div class='network-container'>", unsafe_allow_html=True)
     # Try gravis-based visualization first (from VisualizationService)
     if VisualizationService is not None:
         viz = VisualizationService()
@@ -783,9 +1448,11 @@ def render_network_graph() -> None:
             )
             if fig is not None:
                 st.components.v1.html(fig.to_html(), height=760, scrolling=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                st.markdown("### Legend")
-                cols = st.columns(5)
+                st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+                st.markdown("**Legend**")
+                legend_cols = st.columns(5)
                 legend = [
                     ("Tier 1", "pill-green"),
                     ("Tier 2", "pill-blue"),
@@ -793,20 +1460,23 @@ def render_network_graph() -> None:
                     ("New", "pill-purple"),
                     ("Master", "pill-red"),
                 ]
-                for col, (label, cls) in zip(cols, legend):
+                for col, (label, cls) in zip(legend_cols, legend):
                     with col:
                         st.markdown(f"<span class='stat-pill {cls}'>{label}</span>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
                 return
 
     # Fallback to pyvis
     if Network is None:
         st.warning("Network visualization libraries not available. Install gravis or pyvis.")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
 
     with st.spinner("Building interactive network (pyvis fallback)..."):
         net = build_pyvis_network(df.reset_index(drop=True), matches)
         if net is None:
             st.warning("Network could not be created.")
+            st.markdown("</div>", unsafe_allow_html=True)
             return
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
@@ -815,9 +1485,11 @@ def render_network_graph() -> None:
                 html = fh.read()
 
         st.components.v1.html(html, height=760, scrolling=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("### Legend")
-    cols = st.columns(5)
+    st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+    st.markdown("**Legend**")
+    legend_cols = st.columns(5)
     legend = [
         ("Tier 1", "pill-green"),
         ("Tier 2", "pill-blue"),
@@ -825,20 +1497,32 @@ def render_network_graph() -> None:
         ("New", "pill-purple"),
         ("Master", "pill-red"),
     ]
-    for col, (label, cls) in zip(cols, legend):
+    for col, (label, cls) in zip(legend_cols, legend):
         with col:
             st.markdown(f"<span class='stat-pill {cls}'>{label}</span>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_ubid_explorer() -> None:
-    st.markdown("<div class='section-title'>UBID explorer</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>UBID Explorer</div>", unsafe_allow_html=True)
 
     if not st.session_state.processing_complete:
-        st.info("Process a file first to explore UBIDs.")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">🔎</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">Explorer Empty</div>
+                <div>Process a file first to explore UBIDs.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     df = st.session_state.df_processed.copy()
+    st.markdown("<div class='surface' style='margin-bottom: 1rem;'>", unsafe_allow_html=True)
     query = st.text_input("Search by UBID, name, PAN, GSTIN, district, or state")
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if query:
         q = query.strip().lower()
@@ -854,16 +1538,17 @@ def render_ubid_explorer() -> None:
         st.warning("No results found")
         return
 
+    st.caption(f"{len(results):,} result(s)")
     st.dataframe(results, use_container_width=True, hide_index=True)
 
     if "ubid" in results.columns:
-        selected = st.selectbox("Select UBID", results["ubid"].astype(str).tolist())
+        st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+        selected = st.selectbox("Select UBID for details", results["ubid"].astype(str).tolist())
         if selected:
             row = results[results["ubid"].astype(str) == str(selected)].iloc[0]
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("<div class='surface'>", unsafe_allow_html=True)
-                st.markdown("**UBID summary**")
+                st.markdown("**UBID Summary**")
                 info = pd.DataFrame(
                     [
                         ["UBID", safe_text(row.get("ubid"))],
@@ -878,33 +1563,59 @@ def render_ubid_explorer() -> None:
                     columns=["Field", "Value"],
                 )
                 st.dataframe(info, use_container_width=True, hide_index=True)
-                st.markdown("</div>", unsafe_allow_html=True)
             with col2:
-                st.markdown("<div class='surface'>", unsafe_allow_html=True)
-                st.markdown("**Raw row**")
+                st.markdown("**Raw Row**")
                 st.dataframe(pd.DataFrame([row.to_dict()]), use_container_width=True, hide_index=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_review_queue() -> None:
-    st.markdown("<div class='section-title'>Review queue</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Review Queue</div>", unsafe_allow_html=True)
 
     if not st.session_state.processing_complete:
-        st.info("Process a file first to see review items.")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">Queue Empty</div>
+                <div>Process a file first to see review items.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     matches = [m for m in st.session_state.matches if m.decision == "NeedsReview"]
     if not matches:
-        st.success("No items need review.")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">✅</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">All Clear</div>
+                <div>No items need review.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     df = st.session_state.df_processed
-    st.caption(f"{len(matches)} items need review")
+    st.markdown(
+        f"""
+        <div style="margin-bottom: 1rem;">
+            <span class="stat-pill pill-amber">{len(matches)} items need review</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     for i, m in enumerate(matches, start=1):
         r1 = df.iloc[m.record1_id]
         r2 = df.iloc[m.record2_id]
-        with st.expander(f"Review {i}: {safe_text(r1.get('business_name'))} vs {safe_text(r2.get('business_name'))} | {m.tier} | {m.score:.1f}%"):
+        with st.expander(
+            f"Review {i}: {safe_text(r1.get('business_name'))} vs {safe_text(r2.get('business_name'))} | {m.tier} | {m.score:.1f}%"
+        ):
+            st.markdown("<div class='review-card'>", unsafe_allow_html=True)
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown("**Record 1**")
@@ -918,41 +1629,67 @@ def render_review_queue() -> None:
                 st.write(f"PAN: {safe_text(r2.get('pan'))}")
                 st.write(f"GSTIN: {safe_text(r2.get('gstin'))}")
                 st.write(f"UBID: {safe_text(r2.get('ubid'))}")
-            st.write(f"Reason: {m.reason}")
-            st.write(f"Matched fields: {', '.join(m.matched_fields)}")
+            st.markdown(
+                f"""
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06);">
+                    <span class="stat-pill pill-blue">Reason: {m.reason}</span>
+                    <span class="stat-pill pill-purple">Fields: {', '.join(m.matched_fields)}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_analytics() -> None:
     st.markdown("<div class='section-title'>Analytics</div>", unsafe_allow_html=True)
 
     if not st.session_state.processing_complete:
-        st.info("Process a file first to see analytics.")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">📈</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">Analytics Unavailable</div>
+                <div>Process a file first to see analytics.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     df = st.session_state.df_processed.copy()
+    review_count = sum(1 for m in st.session_state.matches if m.decision == "NeedsReview")
+
+    st.markdown("<div style='margin-bottom: 1rem;'>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Records", len(df))
-    c2.metric("UBIDs", df["ubid"].nunique() if "ubid" in df.columns else 0)
-    c3.metric("Groups", len(st.session_state.match_groups))
-    c4.metric("Review items", sum(1 for m in st.session_state.matches if m.decision == "NeedsReview"))
+    c1.markdown(metric_card("Records", f"{len(df):,}", "cyan"), unsafe_allow_html=True)
+    c2.markdown(metric_card("UBIDs", f"{df['ubid'].nunique() if 'ubid' in df.columns else 0:,}", "purple"), unsafe_allow_html=True)
+    c3.markdown(metric_card("Groups", f"{len(st.session_state.match_groups):,}", "pink"), unsafe_allow_html=True)
+    c4.markdown(metric_card("Review Items", f"{review_count:,}", "orange"), unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='surface'>", unsafe_allow_html=True)
     left, right = st.columns(2, gap="large")
     with left:
-        st.markdown("**Status distribution**")
+        st.markdown("**Status Distribution**")
         if "business_status" in df.columns:
-            st.bar_chart(df["business_status"].value_counts())
+            status_dist = df["business_status"].value_counts().reset_index()
+            status_dist.columns = ["Status", "Count"]
+            st.bar_chart(status_dist, x="Status", y="Count", use_container_width=True)
         else:
             st.info("No status data available")
     with right:
-        st.markdown("**Match tier distribution**")
+        st.markdown("**Match Tier Distribution**")
         if "match_tier" in df.columns:
-            st.bar_chart(df["match_tier"].value_counts())
+            tier_dist = df["match_tier"].value_counts().reset_index()
+            tier_dist.columns = ["Tier", "Count"]
+            tier_dist["Tier"] = tier_dist["Tier"].astype(str)
+            st.bar_chart(tier_dist, x="Tier", y="Count", use_container_width=True)
         else:
             st.info("No match data available")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("### Recent records")
+    st.markdown("<div class='section-title' style='margin-top: 1.5rem; font-size: 1.25rem;'>Recent Records</div>", unsafe_allow_html=True)
     preview_cols = [c for c in ["ubid", "business_name", "business_status", "match_tier", "match_confidence"] if c in df.columns]
     st.dataframe(df[preview_cols].head(20), use_container_width=True, hide_index=True)
 

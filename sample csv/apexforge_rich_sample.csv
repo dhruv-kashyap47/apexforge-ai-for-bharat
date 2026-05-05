@@ -1,0 +1,72 @@
+business_name,pan,gstin,address,pincode,district,state,registration_date,last_activity_date,department
+Shetty Metal Works Pvt Ltd,ABCDE1234F,29ABCDE1234F1Z5,42 Whitefield Main Road Whitefield,560058,Bengaluru Urban,Karnataka,2015-06-01,2024-03-31,GST
+Shetty Metals Private Limited,ABCDE1234F,29ABCDE1234F1Z5,42 Whitefield Rd Whitefield Industrial Area,560058,Bengaluru Urban,Karnataka,2015-06-10,2024-02-28,GST
+Shetti Metalworks P Ltd,,,,560058,Bengaluru,Karnataka,2015-06-05,2023-11-15,GST
+Shetty Metal Workz Pvt Ltd,ABCDE1234F,,No 42 Whitefield Main Road Near EPIP,560058,Bengaluru Urban,Karnataka,2015-06-01,2024-01-20,GST
+Gowda Enterprises,XYZQA9876R,29XYZQA9876R2Z1,15 MG Road Near Trinity Circle,560001,Bengaluru Urban,Karnataka,2018-03-15,2023-09-30,Income Tax
+Gowda Ent,XYZQA9876R,,15 MG Rd,560001,Bengaluru Urban,Karnataka,2018-03-20,2022-12-15,Income Tax
+Gowda Enterprise,XYZQA9876R,29XYZQA9876R2Z1,MG Road Bangalore,560001,Bengaluru Urban,Karnataka,2018-03-15,2023-08-20,Income Tax
+Patel Textiles Pvt Ltd,FGHIJ5678K,24FGHIJ5678K1Z3,Plot 7 GIDC Naroda Naroda Industrial Estate,380015,Ahmedabad,Gujarat,2010-04-10,2024-03-31,GST
+Patel Textile Pvt Ltd,FGHIJ5678K,24FGHIJ5678K1Z3,Plot 7 Naroda GIDC,380015,Ahmedabad,Gujarat,2010-04-15,2024-02-28,GST
+Patel Textiles Limited,FGHIJ5678K,,Plot 7 GIDC Naroda Ahmedabad,380015,Ahmedabad,Gujarat,2010-04-10,2023-10-15,GST
+Sharma Pharma Distributors,KLMNO9012P,07KLMNO9012P1Z8,Shop 34 Lawrence Road Industrial Area Kirtinagar,110020,West Delhi,Delhi,2012-07-20,2024-03-31,MCA
+Sharma Pharma Dist,KLMNO9012P,07KLMNO9012P1Z8,34 Lawrence Rd Industrial Area Kirtinagar,110020,West Delhi,Delhi,2012-07-25,2024-01-15,MCA
+Sharma Pharma Distributer,KLMNO9012P,,Shop 34 Lawrence Road Kirtinagar Delhi,110020,West Delhi,Delhi,2012-07-20,2023-09-10,MCA
+Mehta Construction Co,PQRST3456U,27PQRST3456U1Z2,Office 501 Nariman Point Maker Chamber V,400013,Mumbai City,Maharashtra,2005-11-15,2024-03-31,Labour
+Mehta Construction Company,PQRST3456U,27PQRST3456U1Z2,501 Nariman Point Maker Chamber,400013,Mumbai City,Maharashtra,2005-11-15,2024-02-15,Labour
+Mehta Constructions,PQRST3456U,,Office 501 Nariman Point,400013,Mumbai,Maharashtra,2005-11-20,2023-08-30,Labour
+Rao Agro Industries Pvt Ltd,UVWXY7890Z,36UVWXY7890Z1Z6,H.No 8-2-293 Road No.82 Jubilee Hills,500032,Hyderabad,Telangana,2008-02-28,2024-03-31,GST
+Rao Agro Industry Pvt Ltd,UVWXY7890Z,36UVWXY7890Z1Z6,8-2-293 Rd No 82 Jubilee Hills,500032,Hyderabad,Telangana,2008-03-01,2024-01-10,GST
+Singh Transport Services,ABCFG2345H,03ABCFG2345H1Z1,SCO 45 Phase 7 Market Near GMCH32,140301,Mohali,Punjab,2016-08-10,2024-03-31,Income Tax
+Singh Transport Service,ABCFG2345H,03ABCFG2345H1Z1,SCO 45 Phase 7 Mohali,140301,Mohali,Punjab,2016-08-10,2023-12-05,Income Tax
+Kerala Spices Exports Pvt Ltd,CDEFG3456I,32CDEFG3456I1Z9,XX/1234 Chittoor Road Ernakulam South,682016,Ernakulam,Kerala,2000-09-01,2024-03-31,GST
+Kerala Spice Exports Pvt Ltd,CDEFG3456I,32CDEFG3456I1Z9,1234 Chittoor Rd Ernakulam South,682016,Ernakulam,Kerala,2000-09-01,2023-11-20,GST
+Jain Jewellers,EFGHI4567J,08EFGHI4567J1Z7,Johri Bazaar Near Hawa Mahal,302001,Jaipur,Rajasthan,1998-03-01,2024-03-31,MCA
+Jain Jeweller,EFGHI4567J,08EFGHI4567J1Z7,Johari Bazaar Jaipur,302001,Jaipur,Rajasthan,1998-03-01,2023-10-10,MCA
+Mukherjee IT Solutions Pvt Ltd,GHIJK5678K,19GHIJK5678K1Z5,2/5 Sarat Bose Road Block B 3rd Floor,700016,Kolkata,West Bengal,2014-06-15,2024-03-31,MCA
+Verma Steel Rolling Mill Pvt Ltd,IJKLM6789L,22IJKLM6789L1Z3,Industrial Area Phase 2 Siltara Near Siltara Police Chowki,492001,Raipur,Chhattisgarh,2001-11-30,2024-03-31,Labour
+Iyer Hotels Pvt Ltd,KLMNO7890M,33KLMNO7890M1Z1,No 12 Cathedral Road Gopalapuram,530045,Chennai,Tamil Nadu,2007-03-22,2024-03-31,GST
+Khan Food Products,MNOPQ8901N,09MNOPQ8901N1Z9,Ward 12 Gandhi Nagar Behind Bahu Fort,180001,Jammu,Jammu & Kashmir,2019-08-05,2024-03-31,GST
+Reddy Seeds Corporation Pvt Ltd,OPQRS9012O,28OPQRS9012O1Z7,D.No 47-11-5 Diamond Park Dwaraka Nagar,530020,Visakhapatnam,Andhra Pradesh,2003-05-12,2023-09-30,GST
+Desai Auto Spares,QRSTU0123P,24QRSTU0123P1Z5,G-12 Ring Road Industrial Estate Udhna,395003,Surat,Gujarat,2011-01-25,2024-03-31,MCA
+Nair Rubber Products Pvt Ltd,STUVW1234Q,32STUVW1234Q1Z3,TC 14/2156 Thycaud PO Near Secretariat,695014,Thiruvananthapuram,Kerala,2006-09-30,2024-03-31,Labour
+Bose Electronics Pvt Ltd,UVWXY2345R,19UVWXY2345R1Z1,BD 45 Sector I Salt Lake Near Nalban,700064,North 24 Parganas,West Bengal,2016-12-01,2024-03-31,GST
+Choudhary Cotton Mills Pvt Ltd,WXYZB3456S,08WXYZB3456S1Z9,Nasirabad Road Industrial Area Plot No 34,305001,Ajmer,Rajasthan,1994-02-14,2023-12-31,Labour
+Pillai Coconut Oil Pvt Ltd,XYZBC4567T,32XYZBC4567T1Z7,KP Road Pandalam Near KSR Bus Stand,689001,Pathanamthitta,Kerala,1987-06-10,2024-03-31,GST
+Mishra Brick Factory,YZABC5678U,10YZABC5678U1Z5,Mouza Bhagabanpur Near NH-16,560099,Bhubaneswar,Odisha,2009-07-14,2023-06-30,MCA
+Senthil Garments Pvt Ltd,ABCDE6789V,33ABCDE6789V1Z3,SF No 234 Avinashi Road Peelamedu,641018,Coimbatore,Tamil Nadu,2013-04-01,2024-03-31,GST
+Gupta Cold Storage Pvt Ltd,BCDEF7890W,09BCDEF7890W1Z1,Sector C Mahanagar Near Nishatganj,226001,Lucknow,Uttar Pradesh,2010-10-10,2024-03-31,Income Tax
+Tripathi Ayurveda Pvt Ltd,CDEFG8901X,07CDEFG8901X1Z9,C-34 Preet Vihar Near Preet Vihar Metro,110092,East Delhi,Delhi,2017-03-15,2024-03-31,GST
+Hegde Cashew Exports Pvt Ltd,DEFGH9012Y,29DEFGH9012Y1Z7,Balmatta Road Kankanady Near Lalbagh,575001,Dakshina Kannada,Karnataka,2002-08-20,2023-12-31,GST
+Rao Diagnostics Pvt Ltd,EFGHI0123Z,36EFGHI0123Z1Z5,Plot 45 ECIL X Road Kushaiguda,500082,Medchal-Malkajgiri,Telangana,2015-09-01,2024-03-31,MCA
+Chauhan Flour Mill,FGHIJ1234A,20FGHIJ1234A1Z3,Mithapur Industrial Area Plot 7B,800001,Patna,Bihar,2003-12-01,2023-03-31,Income Tax
+Saxena Plastic Industries Pvt Ltd,GHIJK2345B,09GHIJK2345B1Z1,Runakta Industrial Area Phase 3 Plot 12,282001,Agra,Uttar Pradesh,2009-05-18,2024-03-31,Labour
+Fernandes Fisheries Pvt Ltd,HIJKL3456C,30HIJKL3456C1Z9,Plot 12 Panaji Harbour Miramar,403001,North Goa,Goa,2001-04-30,2024-03-31,GST
+Joshi Computer Academy Pvt Ltd,IJKLM4567D,27IJKLM4567D1Z7,FC Road Shivajinagar Near Ferguson College,411001,Pune,Maharashtra,2012-11-10,2024-03-31,MCA
+Lal Marble & Granite Pvt Ltd,JKLMN5678E,08JKLMN5678E1Z5,Tijara Road Industrial Area Block C,301001,Alwar,Rajasthan,2007-02-22,2023-09-30,Labour
+Mathur Rice Mill,KLMNO6789F,20KLMNO6789F1Z3,Brahmpura Ward 4 Near Muzaffarpur Railway Station,842001,Muzaffarpur,Bihar,2006-01-01,2022-09-30,Income Tax
+Nayak Poultry Farm,LMNOP7890G,21LMNOP7890G1Z1,Mouza Tamando NH-16 Near Tamando Chowk,751001,Khordha,Odisha,2014-08-08,2024-03-31,GST
+Oberoi Paper Products Pvt Ltd,MNOPQ8901H,06MNOPQ8901H1Z9,NH-2 Sector 24 Industrial Area,121001,Faridabad,Haryana,2008-04-15,2024-03-31,Labour
+Pillai Printing Press,NOPQR9012I,32NOPQR9012I1Z7,MG Road Palayam Near Secretariat Jn,695001,Thiruvananthapuram,Kerala,2001-07-01,2024-03-31,GST
+Qureshi Handloom,OPQRS0123J,09OPQRS0123J1Z5,Madanpura Handloom Cluster Ward 45,221001,Varanasi,Uttar Pradesh,1985-11-12,2023-06-30,GST
+Roy Chemical Industries Pvt Ltd,PQRST1234K,19PQRST1234K1Z3,Durgapur Industrial Area Zone B Plot 9,713101,Paschim Bardhaman,West Bengal,1999-06-25,2024-03-31,Labour
+Krishna Dairy Products Pvt Ltd,ABCDE9876G,06ABCDE9876G1Z2,Plot 12 Sector 18 Gurgaon,122001,Gurgaon,Haryana,2015-03-10,2024-03-31,GST
+Krishna Dairy Pvt Ltd,ABCDE9876G,06ABCDE9876G1Z2,Plot 12 Sector 18 Gurugram,122001,Gurgaon,Haryana,2015-03-10,2024-01-15,GST
+Krishna Dairy Products,ABCDE9876G,,Plot 12 Sector 18,122001,Gurgaon,Haryana,2015-03-10,2023-11-20,GST
+Banerjee Software Solutions,DEFGH2345J,19DEFGH2345J1Z1,Block A Salt Lake Sector V,700091,Kolkata,West Bengal,2018-09-01,2024-03-31,MCA
+Banerjee Software,DEFGH2345J,19DEFGH2345J1Z1,Block A Salt Lake Sector 5,700091,Kolkata,West Bengal,2018-09-01,2023-12-10,MCA
+Agarwal Cement traders,GHIJK4567L,08GHIJK4567L1Z2,22 MI Road Jaipur,302001,Jaipur,Rajasthan,2005-07-15,2022-08-30,Income Tax
+Agarwal Cement Trading,GHIJK4567L,08GHIJK4567L1Z2,22 MI Road Johri Bazaar,302001,Jaipur,Rajasthan,2005-07-15,2023-05-20,Income Tax
+Yadav Fertilizers Pvt Ltd,JKLMN6789N,09JKLMN6789N1Z3,Indira Nagar Lucknow,226016,Lucknow,Uttar Pradesh,2010-06-01,2021-04-15,GST
+Yadav Fertilizers,JKLMN6789N,,Indira Nagar Lucknow UP,226016,Lucknow,Uttar Pradesh,2010-06-01,2022-03-31,GST
+Kapoor Sweet House,LMNOP8901P,07LMNOP8901P1Z1,Old Delhi Road Ghaziabad,201001,Ghaziabad,Uttar Pradesh,1995-01-01,2024-03-31,GST
+Kapoor Sweets,LMNOP8901P,07LMNOP8901P1Z1,Old Delhi Rd Ghaziabad,201001,Ghaziabad,Uttar Pradesh,1995-01-01,2023-09-15,GST
+Dutta Electrical Works,OPQRS0123R,19OPQRS0123R1Z5,Behala Kolkata,700034,Kolkata,West Bengal,2002-05-10,2020-12-31,Labour
+Dutta Electricals,OPQRS0123R,19OPQRS0123R1Z5,Behala South Kolkata,700034,Kolkata,West Bengal,2002-05-10,2021-08-15,Labour
+Ghosh Marine Exports,PQRST2345S,19PQRST2345S1Z7,Haldia Dock Complex,721657,Purba Medinipur,West Bengal,2008-11-20,2024-03-31,GST
+Mohan Furniture Mart,STUVW4567U,29STUVW4567U1Z3,Mysore Road Bengaluru,560026,Bengaluru Urban,Karnataka,2012-04-01,2023-07-15,GST
+Mohan Furniture,STUVW4567U,29STUVW4567U1Z3,Mysore Rd Bangalore,560026,Bengaluru Urban,Karnataka,2012-04-01,2022-11-30,GST
+Prasad Granite Works,UVWXY6789V,33UVWXY6789V1Z5,Ranipet Tamil Nadu,632401,Ranipet,Tamil Nadu,2001-02-15,2024-03-31,Labour
+Prasad Granite,UVWXY6789V,33UVWXY6789V1Z5,Ranipet TN,632401,Ranipet,Tamil Nadu,2001-02-15,2023-10-20,Labour
+Nambiar Tea Company,WXYZA8901W,32WXYZA8901W1Z7,Wayanad Kerala,673001,Wayanad,Kerala,1990-06-01,2024-03-31,Income Tax
+Nambiar Tea Co,WXYZA8901W,32WXYZA8901W1Z7,Wayanad KL,673001,Wayanad,Kerala,1990-06-01,2023-08-10,Income Tax
