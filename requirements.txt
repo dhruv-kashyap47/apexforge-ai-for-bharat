@@ -9,3 +9,4 @@ networkx==3.2.1
 phonetics==1.0.5
 python-dateutil==2.8.2
 numpy==1.26.2
+gravis==0.1.0

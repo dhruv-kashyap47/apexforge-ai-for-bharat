@@ -41,6 +41,11 @@ try:
 except Exception:  # pragma: no cover
     Network = None
 
+try:
+    from services.visualization_service import VisualizationService
+except Exception:
+    VisualizationService = None
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -766,11 +771,39 @@ def render_network_graph() -> None:
                     )
             matches = remapped
 
+    # Try gravis-based visualization first (from VisualizationService)
+    if VisualizationService is not None:
+        viz = VisualizationService()
+        with st.spinner("Building interactive network..."):
+            fig = viz.create_match_network(
+                df.reset_index(drop=True),
+                st.session_state.ubid_assignments,
+                matches,
+                height="700px",
+            )
+            if fig is not None:
+                st.components.v1.html(fig.to_html(), height=760, scrolling=True)
+
+                st.markdown("### Legend")
+                cols = st.columns(5)
+                legend = [
+                    ("Tier 1", "pill-green"),
+                    ("Tier 2", "pill-blue"),
+                    ("Tier 3", "pill-amber"),
+                    ("New", "pill-purple"),
+                    ("Master", "pill-red"),
+                ]
+                for col, (label, cls) in zip(cols, legend):
+                    with col:
+                        st.markdown(f"<span class='stat-pill {cls}'>{label}</span>", unsafe_allow_html=True)
+                return
+
+    # Fallback to pyvis
     if Network is None:
-        st.warning("pyvis is not installed. Network visualization is unavailable.")
+        st.warning("Network visualization libraries not available. Install gravis or pyvis.")
         return
 
-    with st.spinner("Building interactive network..."):
+    with st.spinner("Building interactive network (pyvis fallback)..."):
         net = build_pyvis_network(df.reset_index(drop=True), matches)
         if net is None:
             st.warning("Network could not be created.")

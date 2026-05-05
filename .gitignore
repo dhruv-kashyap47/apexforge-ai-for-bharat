@@ -30,6 +30,11 @@ venv/
 ENV/
 env/
 .venv/
+env.bak/
+venv.bak/
+.conda/
+env-*/
+*-env/
 
 # IDE
 .vscode/
@@ -37,14 +42,44 @@ env/
 *.swp
 *.swo
 *~
+*.sublime-*
+*.komodoproject
+.komodotools/
+.project
+.pydevproject
+.settings/
+.classpath
+.factorypath
+*.iml
+*.ipr
+*.iws
+.history/
+.vs/
 
 # OS
 .DS_Store
 Thumbs.db
+*.icloud
+*.icloud_com.*
+desktop.ini
+$RECYCLE.Bin/
+.AppleDouble
+.LSOverride
+Icon
+
+._*
+.Spotlight-V100
+.Trashes
 
 # Logs
 *.log
 logs/
+*.out
+*.err
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Database files (if any local SQLite)
 *.db
