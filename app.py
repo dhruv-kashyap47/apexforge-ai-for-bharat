@@ -100,11 +100,11 @@ CSS = """
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
     :root {
-        --bg-deep: #050810;
-        --bg-surface: rgba(13, 17, 28, 0.65);
-        --bg-card: rgba(255, 255, 255, 0.03);
-        --border-subtle: rgba(255, 255, 255, 0.06);
-        --border-glow: rgba(0, 245, 212, 0.15);
+        --bg-deep: #030508;
+        --bg-surface: rgba(10, 14, 24, 0.75);
+        --bg-card: rgba(255, 255, 255, 0.025);
+        --border-subtle: rgba(255, 255, 255, 0.05);
+        --border-glow: rgba(0, 245, 212, 0.2);
         --text-primary: #f0f0f5;
         --text-secondary: #94a3b8;
         --text-muted: #64748b;
@@ -117,6 +117,9 @@ CSS = """
         --warning: #f59e0b;
         --danger: #ef4444;
         --info: #60a5fa;
+        --glow-cyan: 0 0 20px rgba(0, 245, 212, 0.15);
+        --glow-purple: 0 0 20px rgba(123, 47, 247, 0.15);
+        --glow-pink: 0 0 20px rgba(247, 37, 133, 0.15);
     }
 
     * {
@@ -135,117 +138,154 @@ CSS = """
         max-width: 1400px;
     }
 
-    /* Animated mesh gradient background */
+    /* Animated aurora background */
     .stApp::before {
         content: '';
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
         background:
-            radial-gradient(ellipse 80% 50% at 20% 40%, rgba(123, 47, 247, 0.08) 0%, transparent 50%),
-            radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0, 245, 212, 0.06) 0%, transparent 50%),
-            radial-gradient(ellipse 70% 60% at 50% 90%, rgba(247, 37, 133, 0.05) 0%, transparent 50%),
-            radial-gradient(ellipse 50% 30% at 90% 70%, rgba(255, 159, 28, 0.04) 0%, transparent 50%);
+            radial-gradient(ellipse 80% 50% at 20% 40%, rgba(123, 47, 247, 0.07) 0%, transparent 50%),
+            radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0, 245, 212, 0.05) 0%, transparent 50%),
+            radial-gradient(ellipse 70% 60% at 50% 90%, rgba(247, 37, 133, 0.04) 0%, transparent 50%),
+            radial-gradient(ellipse 50% 30% at 90% 70%, rgba(255, 159, 28, 0.03) 0%, transparent 50%);
         pointer-events: none;
         z-index: 0;
-        animation: meshShift 20s ease-in-out infinite alternate;
+        animation: auroraDrift 25s ease-in-out infinite alternate;
     }
 
-    @keyframes meshShift {
-        0% { transform: translate(0, 0) scale(1); }
-        33% { transform: translate(-2%, 1%) scale(1.02); }
-        66% { transform: translate(1%, -1%) scale(0.98); }
-        100% { transform: translate(0, 0) scale(1); }
+    @keyframes auroraDrift {
+        0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+        25%  { transform: translate(-3%, 2%) scale(1.03); opacity: 0.9; }
+        50%  { transform: translate(2%, -1%) scale(0.97); opacity: 1; }
+        75%  { transform: translate(-1%, 3%) scale(1.01); opacity: 0.95; }
+        100% { transform: translate(0, 0) scale(1); opacity: 1; }
     }
 
-    /* Hero Section */
+    /* Scanline overlay for cyberpunk feel */
+    .stApp::after {
+        content: '';
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: repeating-linear-gradient(
+            0deg, transparent, transparent 2px,
+            rgba(0, 245, 212, 0.008) 2px, rgba(0, 245, 212, 0.008) 4px
+        );
+        pointer-events: none;
+        z-index: 9999;
+    }
+
+    /* Hero Section — Neon command center */
     .hero {
         position: relative;
-        padding: 2.5rem 2rem;
-        border-radius: 28px;
+        padding: 2.8rem 2.5rem;
+        border-radius: 24px;
         background:
-            linear-gradient(135deg, rgba(13, 17, 40, 0.9) 0%, rgba(25, 20, 60, 0.85) 50%, rgba(40, 15, 50, 0.9) 100%);
+            linear-gradient(135deg, rgba(5, 8, 20, 0.95) 0%, rgba(15, 10, 40, 0.9) 50%, rgba(25, 8, 35, 0.95) 100%);
         border: 1px solid var(--border-subtle);
         color: var(--text-primary);
         margin-bottom: 1.5rem;
         overflow: hidden;
         box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.4),
-            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            0 12px 48px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04),
+            var(--glow-cyan);
     }
     .hero::before {
         content: '';
         position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 400px;
-        height: 400px;
-        background: radial-gradient(circle, rgba(0, 245, 212, 0.12) 0%, transparent 70%);
-        animation: pulseGlow 6s ease-in-out infinite;
+        top: -50%; right: -20%;
+        width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(0, 245, 212, 0.1) 0%, transparent 70%);
+        animation: orbFloat 8s ease-in-out infinite;
     }
     .hero::after {
         content: '';
         position: absolute;
-        bottom: -30%;
-        left: -10%;
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(123, 47, 247, 0.1) 0%, transparent 70%);
-        animation: pulseGlow 8s ease-in-out infinite reverse;
+        bottom: -30%; left: -10%;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(123, 47, 247, 0.08) 0%, transparent 70%);
+        animation: orbFloat 10s ease-in-out infinite reverse;
     }
-    @keyframes pulseGlow {
-        0%, 100% { opacity: 0.5; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.1); }
+    @keyframes orbFloat {
+        0%, 100% { opacity: 0.4; transform: scale(1) translate(0, 0); }
+        33% { opacity: 0.8; transform: scale(1.15) translate(10px, -15px); }
+        66% { opacity: 0.6; transform: scale(1.05) translate(-10px, 10px); }
     }
     .hero h1 {
         position: relative;
         z-index: 1;
         margin: 0;
-        font-size: 2.6rem;
+        font-size: 2.8rem;
         line-height: 1.1;
-        font-weight: 800;
-        background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 50%, var(--accent-purple) 100%);
+        font-weight: 900;
+        background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 40%, var(--accent-purple) 70%, var(--accent-pink) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
+        filter: drop-shadow(0 0 30px rgba(0, 245, 212, 0.15));
     }
     .hero p {
         position: relative;
         z-index: 1;
-        margin: 0.6rem 0 0 0;
+        margin: 0.75rem 0 0 0;
         color: var(--text-secondary);
         font-size: 1.05rem;
         font-weight: 400;
-        max-width: 600px;
+        max-width: 650px;
     }
 
-    /* Glass Cards / Surfaces */
+    /* Glass Cards / Surfaces — Animated border gradient */
     .surface {
         background: var(--bg-card);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
         border: 1px solid var(--border-subtle);
         border-radius: 20px;
         padding: 1.5rem;
+        position: relative;
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .surface:hover {
         border-color: var(--border-glow);
-        box-shadow: 0 8px 40px rgba(0, 245, 212, 0.08), 0 4px 24px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 12px 48px rgba(0, 245, 212, 0.06), 0 4px 24px rgba(0, 0, 0, 0.3);
         transform: translateY(-2px);
     }
+    .surface::before {
+        content: '';
+        position: absolute;
+        top: -1px; left: -1px; right: -1px; bottom: -1px;
+        border-radius: 21px;
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.15), transparent 40%, transparent 60%, rgba(123, 47, 247, 0.1));
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+    .surface:hover::before {
+        opacity: 1;
+    }
 
-    /* Section Typography */
+    /* Section Typography — Neon accent underline */
     .section-title {
-        font-size: 1.5rem;
-        font-weight: 700;
+        font-size: 1.6rem;
+        font-weight: 800;
         margin-bottom: 0.75rem;
         color: var(--text-primary);
-        letter-spacing: -0.01em;
+        letter-spacing: -0.02em;
+        position: relative;
+        padding-bottom: 0.6rem;
+    }
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0;
+        width: 60px; height: 3px;
+        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+        border-radius: 999px;
+        box-shadow: var(--glow-cyan);
     }
     .section-subtitle {
         color: var(--text-secondary);
@@ -254,50 +294,68 @@ CSS = """
         font-weight: 400;
     }
 
-    /* Stats / Metric Cards */
+    /* Stats / Metric Cards — Shimmer + animated gradient */
     .metric-card {
         background: var(--bg-card);
-        backdrop-filter: blur(20px);
+        backdrop-filter: blur(24px);
         border: 1px solid var(--border-subtle);
         border-radius: 16px;
         padding: 1.25rem 1.5rem;
         position: relative;
         overflow: hidden;
-        transition: all 0.3s ease;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .metric-card:hover {
         border-color: var(--border-glow);
-        transform: translateY(-3px);
-        box-shadow: 0 8px 32px rgba(0, 245, 212, 0.06);
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 12px 40px rgba(0, 245, 212, 0.08);
     }
     .metric-card::before {
         content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
+        top: 0; left: 0; right: 0;
         height: 3px;
-        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink));
-        opacity: 0.6;
+        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink), var(--accent-cyan));
+        background-size: 300% 100%;
+        animation: gradientSlide 4s ease infinite;
+        opacity: 0.7;
     }
-    .metric-card.cyan::before { background: linear-gradient(90deg, var(--accent-cyan), #00c9a7); }
-    .metric-card.purple::before { background: linear-gradient(90deg, var(--accent-purple), #a855f7); }
-    .metric-card.pink::before { background: linear-gradient(90deg, var(--accent-pink), #ec4899); }
-    .metric-card.orange::before { background: linear-gradient(90deg, var(--accent-orange), #fbbf24); }
+    @keyframes gradientSlide {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    .metric-card.cyan::before { background: linear-gradient(90deg, var(--accent-cyan), #00c9a7, var(--accent-cyan)); background-size: 200% 100%; animation: gradientSlide 3s ease infinite; }
+    .metric-card.purple::before { background: linear-gradient(90deg, var(--accent-purple), #a855f7, var(--accent-purple)); background-size: 200% 100%; animation: gradientSlide 3.5s ease infinite; }
+    .metric-card.pink::before { background: linear-gradient(90deg, var(--accent-pink), #ec4899, var(--accent-pink)); background-size: 200% 100%; animation: gradientSlide 4s ease infinite; }
+    .metric-card.orange::before { background: linear-gradient(90deg, var(--accent-orange), #fbbf24, var(--accent-orange)); background-size: 200% 100%; animation: gradientSlide 3.2s ease infinite; }
+    .metric-card::after {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+        animation: shimmer 5s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+        0% { left: -100%; }
+        50% { left: 100%; }
+        100% { left: 100%; }
+    }
     .metric-card .metric-label {
-        font-size: 0.8rem;
-        font-weight: 500;
+        font-size: 0.78rem;
+        font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.1em;
         margin-bottom: 0.5rem;
     }
     .metric-card .metric-value {
-        font-size: 2rem;
-        font-weight: 800;
+        font-size: 2.2rem;
+        font-weight: 900;
         color: var(--text-primary);
         line-height: 1;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
     }
     .metric-card .metric-delta {
         font-size: 0.8rem;
@@ -305,7 +363,7 @@ CSS = """
         font-weight: 500;
     }
 
-    /* Status Pills */
+    /* Status Pills — Neon glow variants */
     .stat-pill {
         display: inline-flex;
         align-items: center;
@@ -316,40 +374,58 @@ CSS = """
         font-weight: 600;
         margin: 0.2rem 0.25rem 0.2rem 0;
         border: 1px solid transparent;
-        transition: all 0.2s ease;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
     }
+    .stat-pill::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s ease;
+    }
+    .stat-pill:hover::before { left: 100%; }
     .pill-green {
         background: rgba(16, 185, 129, 0.12);
         color: #34d399;
         border-color: rgba(16, 185, 129, 0.2);
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
     }
     .pill-amber {
         background: rgba(245, 158, 11, 0.12);
         color: #fbbf24;
         border-color: rgba(245, 158, 11, 0.2);
+        box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
     }
     .pill-red {
         background: rgba(239, 68, 68, 0.12);
         color: #f87171;
         border-color: rgba(239, 68, 68, 0.2);
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
     }
     .pill-blue {
         background: rgba(59, 130, 246, 0.12);
         color: #60a5fa;
         border-color: rgba(59, 130, 246, 0.2);
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
     }
     .pill-purple {
         background: rgba(123, 47, 247, 0.12);
         color: #a78bfa;
         border-color: rgba(123, 47, 247, 0.2);
+        box-shadow: 0 0 12px rgba(123, 47, 247, 0.15);
     }
     .pill-cyan {
         background: rgba(0, 245, 212, 0.12);
         color: #2dd4bf;
         border-color: rgba(0, 245, 212, 0.2);
+        box-shadow: 0 0 12px rgba(0, 245, 212, 0.15);
     }
     .stat-pill:hover {
-        transform: scale(1.05);
+        transform: translateY(-1px) scale(1.05);
+        filter: brightness(1.1);
     }
 
     /* Notes & Muted text */
@@ -364,58 +440,98 @@ CSS = """
         line-height: 1.5;
     }
 
-    /* Sidebar Styling */
+    /* Sidebar Styling — Animated gradient */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(13, 17, 28, 0.95) 0%, rgba(10, 15, 26, 0.98) 100%) !important;
+        background: linear-gradient(180deg, rgba(5, 8, 20, 0.98) 0%, rgba(10, 14, 24, 0.95) 50%, rgba(15, 10, 30, 0.98) 100%) !important;
         border-right: 1px solid var(--border-subtle) !important;
+        position: relative;
+    }
+    [data-testid="stSidebar"]::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: linear-gradient(180deg, transparent, rgba(0, 245, 212, 0.02), transparent);
+        animation: sidebarGlow 8s ease-in-out infinite;
+        pointer-events: none;
+    }
+    @keyframes sidebarGlow {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
     }
     [data-testid="stSidebar"] .stRadio > label {
         color: var(--text-secondary) !important;
-        font-weight: 600;
-        font-size: 0.75rem;
+        font-weight: 700;
+        font-size: 0.72rem;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.12em;
+        margin-bottom: 0.5rem !important;
     }
     [data-testid="stSidebar"] .stRadio > div > div > label {
         background: transparent !important;
         border: 1px solid transparent !important;
-        border-radius: 12px !important;
-        padding: 0.6rem 0.8rem !important;
+        border-radius: 14px !important;
+        padding: 0.7rem 1rem !important;
         color: var(--text-secondary) !important;
-        font-weight: 500 !important;
-        transition: all 0.2s ease !important;
-        margin-bottom: 0.25rem !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        margin-bottom: 0.3rem !important;
+        position: relative;
+        overflow: hidden;
     }
+    [data-testid="stSidebar"] .stRadio > div > div > label::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 245, 212, 0.1), transparent);
+        transition: left 0.4s ease;
+    }
+    [data-testid="stSidebar"] .stRadio > div > div > label:hover::before { left: 100%; }
     [data-testid="stSidebar"] .stRadio > div > div > label:hover {
         background: rgba(255, 255, 255, 0.04) !important;
         color: var(--text-primary) !important;
+        transform: translateX(2px);
     }
     [data-testid="stSidebar"] .stRadio > div > div > label[data-selected="true"] {
-        background: linear-gradient(135deg, rgba(0, 245, 212, 0.1), rgba(123, 47, 247, 0.1)) !important;
-        border-color: rgba(0, 245, 212, 0.2) !important;
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.12), rgba(123, 47, 247, 0.08)) !important;
+        border-color: rgba(0, 245, 212, 0.25) !important;
         color: var(--accent-cyan) !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 16px rgba(0, 245, 212, 0.15) !important;
     }
 
-    /* Buttons */
+    /* Buttons — Enhanced neon effects */
     .stButton > button {
-        border-radius: 12px !important;
-        font-weight: 600 !important;
+        border-radius: 14px !important;
+        font-weight: 700 !important;
         font-size: 0.9rem !important;
-        padding: 0.6rem 1.2rem !important;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        padding: 0.65rem 1.4rem !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         border: 1px solid transparent !important;
         letter-spacing: 0.01em;
+        position: relative;
+        overflow: hidden;
     }
+    .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+    .stButton > button:hover::before { left: 100%; }
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
-        color: #050810 !important;
+        color: #030508 !important;
         border: none !important;
-        box-shadow: 0 4px 16px rgba(0, 245, 212, 0.25) !important;
+        box-shadow: 0 4px 20px rgba(0, 245, 212, 0.25) !important;
     }
     .stButton > button[kind="primary"]:hover {
-        box-shadow: 0 6px 24px rgba(0, 245, 212, 0.35) !important;
-        transform: translateY(-1px) !important;
+        box-shadow: 0 8px 32px rgba(0, 245, 212, 0.4) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+        filter: brightness(1.1);
     }
     .stButton > button[kind="secondary"] {
         background: rgba(255, 255, 255, 0.05) !important;
@@ -425,6 +541,8 @@ CSS = """
     .stButton > button[kind="secondary"]:hover {
         background: rgba(255, 255, 255, 0.08) !important;
         border-color: var(--border-glow) !important;
+        box-shadow: 0 0 16px rgba(0, 245, 212, 0.1) !important;
+        transform: translateY(-1px) !important;
     }
 
     /* DataFrames / Tables */
@@ -583,16 +701,98 @@ CSS = """
         box-shadow: 0 4px 20px rgba(0, 245, 212, 0.05);
     }
 
-    /* Empty state */
+    /* Empty state — Animated SVG illustrations */
     .empty-state {
         text-align: center;
         padding: 4rem 2rem;
         color: var(--text-muted);
+        position: relative;
     }
     .empty-state-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
+        font-size: 3.5rem;
+        margin-bottom: 1.5rem;
+        opacity: 0.6;
+        animation: float 4s ease-in-out infinite;
+        filter: drop-shadow(0 0 20px rgba(0, 245, 212, 0.2));
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    .empty-state h3 {
+        color: var(--text-primary);
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .empty-state p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    /* Dashboard section animations */
+    .dashboard-section {
+        animation: slideInUp 0.6s ease-out;
+    }
+    @keyframes slideInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .dashboard-section:nth-child(2) { animation-delay: 0.1s; }
+    .dashboard-section:nth-child(3) { animation-delay: 0.2s; }
+    .dashboard-section:nth-child(4) { animation-delay: 0.3s; }
+
+    /* Pipeline steps styling */
+    .pipeline-steps {
+        position: relative;
+    }
+    .pipeline-step {
+        text-align: center;
+        flex: 1;
+        position: relative;
+    }
+    .step-icon {
+        font-size: 1.8rem;
+        margin-bottom: 0.3rem;
+        animation: pulse 2s ease-in-out infinite;
+    }
+    .step-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .pipeline-arrow {
+        font-size: 1.2rem;
+        color: var(--accent-cyan);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: arrowPulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.1); opacity: 1; }
+    }
+    @keyframes arrowPulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+    }
+
+    /* Upload zone styling */
+    .upload-zone {
+        border: 2px dashed var(--border-glow) !important;
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.02), rgba(123, 47, 247, 0.02)) !important;
+        transition: all 0.3s ease !important;
+    }
+    .upload-zone:hover {
+        border-color: var(--accent-cyan) !important;
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.05), rgba(123, 47, 247, 0.05)) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(0, 245, 212, 0.1) !important;
     }
 
     /* Focus accessibility */
@@ -939,13 +1139,31 @@ def render_header() -> None:
     st.markdown(
         f"""
         <div class="hero">
-            <h1>ApexForge AI</h1>
+            <h1 class="typing-text">ApexForge AI</h1>
             <p>Unified Business Identity System — clean uploads, intelligent matching, and UBID exploration at scale.</p>
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 {db_status}
                 {batch_status}
             </div>
         </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {{
+            const typingElement = document.querySelector('.typing-text');
+            if (typingElement) {{
+                const text = typingElement.textContent;
+                typingElement.textContent = '';
+                let index = 0;
+                function typeText() {{
+                    if (index < text.length) {{
+                        typingElement.textContent += text.charAt(index);
+                        index++;
+                        setTimeout(typeText, 80);
+                    }}
+                }}
+                setTimeout(typeText, 500);
+            }}
+        }});
+        </script>
         """,
         unsafe_allow_html=True,
     )
@@ -955,26 +1173,26 @@ def render_sidebar() -> str:
     with st.sidebar:
         st.markdown(
             """
-            <div style="padding: 0.5rem 0 1rem 0;">
-                <div style="font-size: 1.15rem; font-weight: 800; color: #f0f0f5; letter-spacing: -0.01em;">
-                    ApexForge AI
+            <div style="padding: 0.5rem 0 1.5rem 0;">
+                <div style="font-size: 1.25rem; font-weight: 900; color: #f0f0f5; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.5rem;">
+                    🏢 ApexForge AI
                 </div>
-                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem; font-weight: 500;">
-                    BUSINESS IDENTITY PIPELINE
+                <div style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;">
+                    Business Identity Pipeline
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        st.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 1rem 0; opacity: 0.3;'>", unsafe_allow_html=True)
 
         db_col1, db_col2 = st.columns([1, 1])
         with db_col1:
-            if st.button("Connect DB", use_container_width=True, type="secondary"):
+            if st.button("⚡ Connect DB", use_container_width=True, type="secondary"):
                 init_database()
         with db_col2:
-            if st.button("Reset", use_container_width=True, type="secondary"):
+            if st.button("🔄 Reset", use_container_width=True, type="secondary"):
                 reset_processing_state()
                 st.rerun()
 
@@ -988,39 +1206,99 @@ def render_sidebar() -> str:
         if status_pills:
             st.markdown(" ".join(status_pills), unsafe_allow_html=True)
 
-        st.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 1rem 0; opacity: 0.3;'>", unsafe_allow_html=True)
 
-        nav_options = ["Upload", "Dashboard", "Results", "Network Graph", "UBID Explorer", "Review Queue", "Analytics"]
+        nav_options = [
+            ("📤 Upload", "Upload"),
+            ("📊 Dashboard", "Dashboard"),
+            ("🔍 Results", "Results"),
+            ("🕸️ Network", "Network Graph"),
+            ("🎯 UBID", "UBID Explorer"),
+            ("📝 Review", "Review Queue"),
+            ("📈 Analytics", "Analytics")
+        ]
+        nav_labels = [label for _, label in nav_options]
         nav_index = 0 if not st.session_state.processing_complete else 1
-        page = st.radio(
-            "Navigate",
-            nav_options,
+
+        # Custom radio with icons
+        selected = st.radio(
+            "",
+            nav_labels,
             index=nav_index,
-            label_visibility="visible",
+            label_visibility="collapsed",
         )
 
-        st.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
+        # Display icon-based navigation
+        for icon, label in nav_options:
+            is_selected = selected == label
+            st.markdown(
+                f"""
+                <div style="padding: 0.4rem 0; cursor: pointer; {'background: linear-gradient(90deg, rgba(0, 245, 212, 0.1), transparent); border-left: 3px solid var(--accent-cyan);' if is_selected else ''}">
+                    <span style="font-size: 1rem; margin-right: 0.5rem;">{icon}</span>
+                    <span style="color: {'var(--accent-cyan)' if is_selected else 'var(--text-secondary)'}; font-weight: {'700' if is_selected else '500'};">{label}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<hr style='margin: 1rem 0; opacity: 0.3;'>", unsafe_allow_html=True)
         st.markdown(
             """
-            <div class="small-note">
-                Drop a CSV, process it once, then inspect matches, clusters, reviews, and UBIDs without leaving the app.
+            <div class="small-note" style="border-left: 2px solid var(--border-glow); padding-left: 0.75rem;">
+                💡 Drop a CSV, process it once, then explore matches, clusters, reviews, and UBIDs without leaving the app.
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    return page
+    return selected
 
 
 def render_upload_page() -> None:
     st.markdown("<div class='section-title'>Upload Business Data</div>", unsafe_allow_html=True)
     st.markdown("<div class='section-subtitle'>Clean. Match. Assign. Review. Export.</div>", unsafe_allow_html=True)
 
+    # Pipeline steps visualization
+    st.markdown("""
+    <div class='pipeline-steps' style='display: flex; justify-content: space-between; margin: 2rem 0; padding: 0 1rem;'>
+        <div class='pipeline-step'>
+            <div class='step-icon'>📤</div>
+            <div class='step-label'>Upload</div>
+        </div>
+        <div class='pipeline-arrow'>→</div>
+        <div class='pipeline-step'>
+            <div class='step-icon'>🧹</div>
+            <div class='step-label'>Clean</div>
+        </div>
+        <div class='pipeline-arrow'>→</div>
+        <div class='pipeline-step'>
+            <div class='step-icon'>🔍</div>
+            <div class='step-label'>Match</div>
+        </div>
+        <div class='pipeline-arrow'>→</div>
+        <div class='pipeline-step'>
+            <div class='step-icon'>🎯</div>
+            <div class='step-label'>UBID</div>
+        </div>
+        <div class='pipeline-arrow'>→</div>
+        <div class='pipeline-step'>
+            <div class='step-icon'>📊</div>
+            <div class='step-label'>Explore</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     left, right = st.columns([2.2, 1], gap="large")
 
     with left:
-        st.markdown("<div class='surface'>", unsafe_allow_html=True)
-        st.markdown("**Drop your CSV here**")
+        st.markdown("<div class='surface upload-zone'>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style='text-align: center; padding: 2rem 1rem 1rem 1rem;'>
+            <div style='font-size: 2.5rem; margin-bottom: 0.5rem; animation: float 3s ease-in-out infinite;'>📁</div>
+            <div style='font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;'>Drop your CSV here</div>
+            <div style='color: var(--text-secondary); font-size: 0.9rem;'>or click to browse</div>
+        </div>
+        """, unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Upload CSV",
             type=["csv"],
@@ -1123,8 +1401,8 @@ def render_dashboard() -> None:
             """
             <div class="empty-state">
                 <div class="empty-state-icon">📊</div>
-                <div style="font-size: 1.1rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.5rem;">Dashboard Locked</div>
-                <div>Process a file first to unlock the dashboard and view insights.</div>
+                <h3>Dashboard Locked</h3>
+                <p>Process a file first to unlock the dashboard and view insights.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1143,14 +1421,21 @@ def render_dashboard() -> None:
     if "match_confidence" in df.columns and not df["match_confidence"].isna().all():
         avg_confidence = float(df["match_confidence"].mean())
 
-    st.markdown("<div style='margin-bottom: 1rem;'>", unsafe_allow_html=True)
+    # Animated KPI section
+    st.markdown("<div class='dashboard-section' style='margin-bottom: 1.5rem;'>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    c1.markdown(metric_card("Total Records", f"{stats['total_records']:,}", "cyan"), unsafe_allow_html=True)
-    c2.markdown(metric_card("UBIDs Generated", f"{stats['ubids_generated']:,}", "purple"), unsafe_allow_html=True)
-    c3.markdown(metric_card("Match Rate", f"{match_rate:.1f}%", "pink"), unsafe_allow_html=True)
-    c4.markdown(metric_card("Avg Confidence", f"{avg_confidence:.1f}%", "orange"), unsafe_allow_html=True)
+    with c1:
+        st.markdown(metric_card("Total Records", f"{stats['total_records']:,}", "cyan"), unsafe_allow_html=True)
+    with c2:
+        st.markdown(metric_card("UBIDs Generated", f"{stats['ubids_generated']:,}", "purple"), unsafe_allow_html=True)
+    with c3:
+        st.markdown(metric_card("Match Rate", f"{match_rate:.1f}%", "pink"), unsafe_allow_html=True)
+    with c4:
+        st.markdown(metric_card("Avg Confidence", f"{avg_confidence:.1f}%", "orange"), unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # Status & Decisions section
+    st.markdown("<div class='dashboard-section'>", unsafe_allow_html=True)
     st.markdown("<div class='surface'>", unsafe_allow_html=True)
     left, right = st.columns(2, gap="large")
 
@@ -1183,7 +1468,10 @@ def render_dashboard() -> None:
         )
 
     st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
+    # Confidence & Tiers section
+    st.markdown("<div class='dashboard-section'>", unsafe_allow_html=True)
     st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
     c1, c2 = st.columns(2, gap="large")
 
@@ -1224,7 +1512,10 @@ def render_dashboard() -> None:
             st.info("No tier data available")
 
     st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
+    # Geographic & Department section
+    st.markdown("<div class='dashboard-section'>", unsafe_allow_html=True)
     st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
     c1, c2 = st.columns(2, gap="large")
 
@@ -1247,7 +1538,10 @@ def render_dashboard() -> None:
             st.info("No department data available")
 
     st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
+    # Data Quality section
+    st.markdown("<div class='dashboard-section'>", unsafe_allow_html=True)
     st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
     st.markdown("**Data Quality Overview**")
     dq_cols = [c for c in ["business_name", "pan", "gstin", "address", "district", "state"] if c in df.columns]
@@ -1262,7 +1556,10 @@ def render_dashboard() -> None:
     else:
         st.info("No data quality fields available")
     st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
+    # Processing Summary section
+    st.markdown("<div class='dashboard-section'>", unsafe_allow_html=True)
     st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
     st.markdown("**Processing Summary**")
     summary_df = pd.DataFrame(
@@ -1284,6 +1581,7 @@ def render_dashboard() -> None:
         columns=["Metric", "Value"],
     )
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 

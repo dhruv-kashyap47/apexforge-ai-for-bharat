@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Palantir-esque dark theme constants
+
 _GRAPH_KWARGS = dict(
     graph_height=700,
     background_color="#0a0e1a",
@@ -39,16 +39,16 @@ _GRAPH_KWARGS = dict(
 class VisualizationService:
 
     COLORS = {
-        "tier1":   "#00ff87",   # neon green  — Palantir "confirmed"
-        "tier2":   "#3b82f6",   # electric blue
-        "tier3":   "#f59e0b",   # amber
-        "new":     "#a855f7",   # violet
+        "tier1":   "#00ff87",
+        "tier2":   "#3b82f6",
+        "tier3":   "#f59e0b",
+        "new":     "#a855f7",
         "active":  "#00ff87",
         "dormant": "#f59e0b",
         "closed":  "#ef4444",
         "default": "#475569",
         "master":  "#ffffff",
-        "link":    "#1e3a5f",   # muted dark blue for grouping edges
+        "link":    "#1e3a5f",
     }
 
     def __init__(self):
@@ -147,7 +147,7 @@ class VisualizationService:
         return gv.d3(G, **kwargs)
 
     # ------------------------------------------------------------------
-    # Chart helpers (no pyvis dependency — plain dicts, unchanged)
+    # Chart helpers
     # ------------------------------------------------------------------
 
     def create_status_distribution_chart(self, df: pd.DataFrame) -> Dict:

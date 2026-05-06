@@ -5,9 +5,6 @@ It focuses on being deterministic, safe, and easy to reason about:
 - Tier 1: exact identifier matches (PAN / GSTIN)
 - Tier 2: strong business-name similarity + shared location
 - Tier 3: moderate business-name similarity + shared location
-
-The engine avoids noisy all-to-all comparisons by using candidate indexes.
-It is defensive against missing columns and bad rows.
 """
 
 from __future__ import annotations

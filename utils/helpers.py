@@ -8,13 +8,13 @@ import random
 import pandas as pd
 
 
-# Expected CSV columns (internal names)
+# Expected CSV columns
 REQUIRED_COLUMNS = [
     'business_name', 'pan', 'gstin', 'address', 'pincode',
     'district', 'state', 'registration_date', 'last_activity_date', 'department'
 ]
 
-# Flexible column name mappings (various CSV formats -> internal names)
+# Flexible column name mappings
 # Each internal field can have multiple possible source column names
 COLUMN_MAPPINGS = {
     'business_name': ['business_name', 'company_name', 'firm_name', 'entity_name', 'organization_name', 'trade_name', 'legal_name', 'proprietor_owner_name'],

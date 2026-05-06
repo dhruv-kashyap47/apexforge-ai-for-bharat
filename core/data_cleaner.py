@@ -5,11 +5,6 @@ Designed to work cleanly with the matching engine and UBID generator:
 - normalizes state/district fields
 - parses date columns safely
 - exposes simple cleaning stats
-
-This version is intentionally defensive:
-- never crashes on bad input
-- tolerates missing columns
-- keeps output columns predictable
 """
 
 from __future__ import annotations
@@ -24,7 +19,7 @@ import pandas as pd
 
 try:
     from phonetics import metaphone as _metaphone
-except Exception:  # pragma: no cover - optional dependency
+except Exception:
     _metaphone = None
 
 
