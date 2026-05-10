@@ -809,12 +809,16 @@ For any UBID, you see:
 pip install -r requirements.txt
 ```
 
+If you plan to use the optional AI explanation feature, also set `GEMINI_API_KEY` in your `.env` file. The app will stay fully functional without it.
+
 ### 2. (Optional) Set Up Database
 If you want to save results to PostgreSQL:
 ```bash
 # Create a .env file with your database URL
 echo "DATABASE_URL=postgresql://user:password@localhost:5432/apexforge_db" > .env
 ```
+
+When `DATABASE_URL` is set, ApexForge AI now uses a safe database-backed pipeline that writes raw records, match logs, matched groups, review items, and UBIDs into Neon/PostgreSQL without dropping existing data.
 
 If you DON'T set up a database, the app works in **Local Mode** — all data stays in memory.
 

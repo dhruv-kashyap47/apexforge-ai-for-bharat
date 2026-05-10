@@ -33,6 +33,11 @@ from core.status_analyzer import StatusAnalyzer
 from core.ubid_generator import UBIDGenerator
 
 try:
+    from services.data_service import DataService
+except Exception:
+    DataService = None
+
+try:
     from db.connection import get_db_manager
 except Exception:  # pragma: no cover
     get_db_manager = None
@@ -41,6 +46,11 @@ try:
     from pyvis.network import Network
 except Exception:  # pragma: no cover
     Network = None
+
+try:
+    from services.ai_service import AIReviewService
+except Exception:
+    AIReviewService = None
 
 try:
     from services.visualization_service import VisualizationService
@@ -850,6 +860,10 @@ if "db_manager" not in st.session_state:
     st.session_state.db_manager = None
 if "last_error" not in st.session_state:
     st.session_state.last_error = None
+if "ai_explanations" not in st.session_state:
+    st.session_state.ai_explanations = {}
+if "ai_service_ready" not in st.session_state:
+    st.session_state.ai_service_ready = None
 
 st.markdown(CSS, unsafe_allow_html=True)
 
@@ -879,6 +893,77 @@ def format_confidence(value: Any) -> str:
         return f"{float(value):.1f}%"
     except Exception:
         return "N/A"
+
+
+def get_ai_service() -> Optional[Any]:
+    if AIReviewService is None:
+        st.session_state.ai_service_ready = False
+        return None
+
+    service = st.session_state.get("ai_service")
+    if service is None:
+        try:
+            service = AIReviewService()
+            st.session_state.ai_service = service
+        except Exception as exc:
+            logger.warning("AI review service unavailable: %s", exc)
+            st.session_state.ai_service_ready = False
+            return None
+
+    try:
+        st.session_state.ai_service_ready = bool(service.is_available())
+    except Exception:
+        st.session_state.ai_service_ready = False
+    return service
+
+
+def render_ai_review_result(result: Dict[str, Any]) -> None:
+    if not result:
+        return
+
+    recommendation = str(result.get("recommendation", "Unknown")).strip() or "Unknown"
+    recommendation_key = recommendation.lower()
+    badge_class = {
+        "merge": "pill-cyan",
+        "review": "pill-amber",
+        "keepseparate": "pill-purple",
+        "unknown": "pill-blue",
+    }.get(recommendation_key, "pill-blue")
+
+    source = safe_text(result.get("source", "fallback"))
+    summary = safe_text(result.get("confidence_summary"))
+    uncertainty = safe_text(result.get("uncertainty"))
+    bullets = result.get("bullets") or []
+    evidence = result.get("evidence") or []
+    score = safe_text(result.get("match_score"))
+    cached_badge = '<span class="stat-pill pill-blue">Cached</span>' if result.get("cached") else ""
+
+    st.markdown(
+        f"""
+        <div style="margin-top: 0.9rem; padding: 0.85rem 1rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);">
+            <div style="display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; margin-bottom:0.65rem;">
+                <span class="stat-pill {badge_class}">AI Recommendation: {recommendation}</span>
+                <span class="stat-pill pill-blue">Score {score}</span>
+                <span class="stat-pill pill-purple">Source: {source}</span>
+                {cached_badge}
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if bullets:
+        st.markdown(
+            "\n".join([f"- {safe_text(item, escape_html=True)}" for item in bullets[:3]]),
+            unsafe_allow_html=False,
+        )
+    if summary:
+        st.caption(f"Confidence summary: {summary}")
+    if uncertainty:
+        st.caption(f"Uncertainty: {uncertainty}")
+    if evidence:
+        st.caption(f"Evidence: {', '.join(safe_text(item) for item in evidence[:3])}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def auto_map_columns(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], List[str]]:
@@ -944,6 +1029,7 @@ def reset_processing_state() -> None:
     st.session_state.ubid_assignments = {}
     st.session_state.status_summary = {}
     st.session_state.last_error = None
+    st.session_state.ai_explanations = {}
 
 
 def init_database() -> Optional[Any]:
@@ -969,6 +1055,21 @@ def init_database() -> Optional[Any]:
         st.session_state.db_manager = None
         st.warning(f"Database unavailable. Running in local mode: {exc}")
         return None
+
+
+def ensure_database_manager() -> Optional[Any]:
+    """Return a live DB manager if one can be created safely."""
+    db_manager = st.session_state.get("db_manager")
+    if db_manager is not None:
+        return db_manager
+
+    if get_db_manager is None:
+        return None
+
+    if not os.getenv("DATABASE_URL"):
+        return None
+
+    return init_database()
 
 
 def compute_local_stats(df: Optional[pd.DataFrame], matches: List[MatchResult], groups: List[List[int]], assignments: Dict[int, Dict[str, Any]]) -> Dict[str, Any]:
@@ -1054,50 +1155,71 @@ def pipeline_process(df: pd.DataFrame) -> None:
     progress = st.progress(0)
     status_text = st.empty()
 
-    cleaner = DataCleaner()
-    matcher = MatchingEngine()
-    analyzer = StatusAnalyzer()
-    ubid_gen = UBIDGenerator(db_manager=st.session_state.get("db_manager"))
+    db_manager = ensure_database_manager()
+    use_db_pipeline = DataService is not None and db_manager is not None
 
-    status_text.write("Cleaning data...")
-    df_clean = cleaner.clean_dataframe(df)
-    progress.progress(20)
+    if use_db_pipeline:
+        status_text.write("Running database-backed pipeline...")
+        try:
+            data_service = DataService(db_manager=db_manager)
+            result = data_service.process_full_pipeline(df, batch_id=batch_id)
+            df_final = attach_group_summary(result["df"], result["groups"])
+            matches = result["matches"]
+            groups = result["groups"]
+            assignments = result["assignments"]
+            progress.progress(90)
+        except Exception as exc:
+            logger.warning("Database pipeline failed, falling back to local mode: %s", exc)
+            use_db_pipeline = False
+            matches = []
+            groups = []
+            assignments = {}
 
-    status_text.write("Analyzing business status...")
-    df_status = analyzer.analyze_dataframe(df_clean)
-    progress.progress(40)
+    if not use_db_pipeline:
+        cleaner = DataCleaner()
+        matcher = MatchingEngine()
+        analyzer = StatusAnalyzer()
+        ubid_gen = UBIDGenerator(db_manager=st.session_state.get("db_manager"))
 
-    status_text.write("Finding matches...")
-    matches = matcher.find_matches(df_status)
-    groups = matcher.group_matches(matches, len(df_status))
-    progress.progress(60)
+        status_text.write("Cleaning data...")
+        df_clean = cleaner.clean_dataframe(df)
+        progress.progress(20)
 
-    status_text.write("Assigning UBIDs...")
-    try:
-        assignments = ubid_gen.assign_ubids(df_status, groups, matches)
-    except Exception as exc:
-        logger.warning("UBID assignment fallback used: %s", exc)
-        assignments = {}
-        for idx in range(len(df_status)):
-            row = df_status.iloc[idx]
-            state_code = row.get("state_code") or "XX"
-            district_code = row.get("district_code") or "XXX"
-            category = row.get("department") or "TR"
-            ubid = ubid_gen.generate_ubid(state_code, district_code, category)
-            assignments[idx] = {
-                "ubid": ubid,
-                "is_master": True,
-                "confidence": 100.0,
-                "tier": "New",
-                "matched_fields": [],
-                "decision": "New",
-                "group_indices": [idx],
-            }
-    progress.progress(80)
+        status_text.write("Analyzing business status...")
+        df_status = analyzer.analyze_dataframe(df_clean)
+        progress.progress(40)
 
-    status_text.write("Finalizing results...")
-    df_final = attach_assignments(df_status, assignments)
-    df_final = attach_group_summary(df_final, groups)
+        status_text.write("Finding matches...")
+        matches = matcher.find_matches(df_status)
+        groups = matcher.group_matches(matches, len(df_status))
+        progress.progress(60)
+
+        status_text.write("Assigning UBIDs...")
+        try:
+            assignments = ubid_gen.assign_ubids(df_status, groups, matches)
+        except Exception as exc:
+            logger.warning("UBID assignment fallback used: %s", exc)
+            assignments = {}
+            for idx in range(len(df_status)):
+                row = df_status.iloc[idx]
+                state_code = row.get("state_code") or "XX"
+                district_code = row.get("district_code") or "XXX"
+                category = row.get("department") or "TR"
+                ubid = ubid_gen.generate_ubid(state_code, district_code, category)
+                assignments[idx] = {
+                    "ubid": ubid,
+                    "is_master": True,
+                    "confidence": 100.0,
+                    "tier": "New",
+                    "matched_fields": [],
+                    "decision": "New",
+                    "group_indices": [idx],
+                }
+        progress.progress(80)
+
+        status_text.write("Finalizing results...")
+        df_final = attach_assignments(df_status, assignments)
+        df_final = attach_group_summary(df_final, groups)
 
     st.session_state.batch_id = batch_id
     st.session_state.raw_df = df.copy()
@@ -1105,7 +1227,24 @@ def pipeline_process(df: pd.DataFrame) -> None:
     st.session_state.matches = matches
     st.session_state.match_groups = groups
     st.session_state.ubid_assignments = assignments
-    st.session_state.status_summary = analyzer.get_summary()
+    if "business_status" in df_final.columns:
+        counts = df_final["business_status"].value_counts(dropna=False).to_dict()
+        total = int(len(df_final)) or 1
+        st.session_state.status_summary = {
+            "counts": {
+                "active": int(counts.get("Active", 0)),
+                "dormant": int(counts.get("Dormant", 0)),
+                "closed": int(counts.get("Closed", 0)),
+            },
+            "percentages": {
+                "active": (int(counts.get("Active", 0)) / total) * 100.0,
+                "dormant": (int(counts.get("Dormant", 0)) / total) * 100.0,
+                "closed": (int(counts.get("Closed", 0)) / total) * 100.0,
+            },
+            "total": int(len(df_final)),
+        }
+    else:
+        st.session_state.status_summary = {}
     st.session_state.processing_complete = True
     st.session_state.last_error = None
 
@@ -1898,10 +2037,14 @@ def render_review_queue() -> None:
         return
 
     df = st.session_state.df_processed
+    ai_service = get_ai_service()
     st.markdown(
         f"""
         <div style="margin-bottom: 1rem;">
             <span class="stat-pill pill-amber">{len(matches)} items need review</span>
+            <span class="stat-pill {'pill-cyan' if ai_service and ai_service.is_available() else 'pill-purple'}">
+                AI {'Ready' if ai_service and ai_service.is_available() else 'Offline'}
+            </span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1910,6 +2053,16 @@ def render_review_queue() -> None:
     for i, m in enumerate(matches, start=1):
         r1 = df.iloc[m.record1_id]
         r2 = df.iloc[m.record2_id]
+        ai_key = f"{m.record1_id}:{m.record2_id}:{float(m.score or 0.0):.1f}:{m.tier}:{m.decision}"
+        cached_ai = st.session_state.ai_explanations.get(ai_key)
+        if cached_ai is None and ai_service is not None:
+            try:
+                cached_ai = ai_service.get_cached_explanation(m, r1, r2)
+                if cached_ai is not None:
+                    st.session_state.ai_explanations[ai_key] = cached_ai
+            except Exception as exc:
+                logger.debug("AI cache lookup skipped: %s", exc)
+
         with st.expander(
             f"Review {i}: {safe_text(r1.get('business_name'))} vs {safe_text(r2.get('business_name'))} | {m.tier} | {m.score:.1f}%"
         ):
@@ -1936,6 +2089,43 @@ def render_review_queue() -> None:
                 """,
                 unsafe_allow_html=True,
             )
+
+            st.markdown("<div style='margin-top: 0.75rem;'>", unsafe_allow_html=True)
+            if cached_ai is not None:
+                render_ai_review_result(cached_ai)
+            if ai_service is None or not ai_service.is_available():
+                st.caption("AI review assistant is unavailable. Set `GEMINI_API_KEY` to enable optional explanations.")
+            elif cached_ai is None and ai_service.should_offer_explanation(m):
+                st.caption("Optional AI explanation is available for this review item.")
+
+            if ai_service is not None and ai_service.is_available():
+                if st.button("Explain Match", key=f"explain_{ai_key}", use_container_width=True):
+                    with st.spinner("Generating concise AI explanation..."):
+                        try:
+                            result = ai_service.explain_match(m, r1, r2, explicit=True)
+                        except Exception as exc:
+                            logger.warning("AI explanation failed: %s", exc)
+                            result = {
+                                "ok": False,
+                                "source": "fallback",
+                                "cached": False,
+                                "recommendation": "Review",
+                                "confidence_summary": "AI explanation failed; deterministic review remains in place.",
+                                "uncertainty": safe_text(exc),
+                                "bullets": [
+                                    f"Decision: {m.decision}",
+                                    f"Score: {m.score:.1f}%",
+                                    "Human review remains the final step.",
+                                ],
+                                "evidence": list(m.matched_fields or [])[:3] or ["business_name"],
+                                "match_score": round(float(m.score or 0.0), 1),
+                                "tier": m.tier,
+                                "decision": m.decision,
+                            }
+                        st.session_state.ai_explanations[ai_key] = result
+                        render_ai_review_result(result)
+            st.markdown("</div>", unsafe_allow_html=True)
+
             st.markdown("</div>", unsafe_allow_html=True)
 
 
