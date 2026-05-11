@@ -1,9 +1,11 @@
+import json
 import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
+from sqlalchemy import text
 
 from core.data_cleaner import DataCleaner
 from core.matching_engine import MatchingEngine
@@ -36,7 +38,19 @@ class DataService:
             pass
         if isinstance(value, pd.Timestamp):
             return value.to_pydatetime()
+        try:
+            import numpy as np  # local import keeps the module light
+
+            if isinstance(value, np.generic):
+                return value.item()
+        except Exception:
+            pass
         return value
+
+    def _json_text(self, value: Any) -> str:
+        """Serialize Python objects for JSONB columns."""
+        safe_value = self._safe_na(value)
+        return json.dumps(safe_value, ensure_ascii=True, default=str)
 
     def _ensure_batch_id(self, batch_id: Optional[str] = None) -> str:
         return batch_id or f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{str(uuid.uuid4())[:8].upper()}"
@@ -50,9 +64,9 @@ class DataService:
         if self._has_db():
             try:
                 inserted_ids = self._store_raw_records(df_clean)
-                for idx, db_id in enumerate(inserted_ids):
-                    if idx < len(df_clean):
-                        df_clean.at[idx, "db_id"] = db_id
+                for row_idx, db_id in inserted_ids.items():
+                    if 0 <= row_idx < len(df_clean):
+                        df_clean.at[row_idx, "db_id"] = db_id
             except Exception as exc:
                 logger.warning("Raw record storage skipped: %s", exc)
 
@@ -98,9 +112,9 @@ class DataService:
 
         return out
 
-    def _store_raw_records(self, df: pd.DataFrame) -> List[int]:
+    def _store_raw_records(self, df: pd.DataFrame) -> Dict[int, int]:
         if not self._has_db():
-            return []
+            return {}
 
         cols = [
             "upload_batch_id", "business_name", "pan", "gstin", "address", "pincode",
@@ -110,19 +124,34 @@ class DataService:
         ]
         available_cols = [c for c in cols if c in df.columns]
         if not available_cols:
-            return []
+            return {}
 
         df_to_store = df[available_cols].copy()
-        inserted_ids: List[int] = []
+        inserted_ids: Dict[int, int] = {}
 
-        for _, row in df_to_store.iterrows():
-            row_dict = {col: self._safe_na(row.get(col)) for col in df_to_store.columns}
-            cols_sql = ", ".join(row_dict.keys())
-            placeholders = ", ".join([f":{k}" for k in row_dict.keys()])
-            query = f"INSERT INTO raw_records ({cols_sql}) VALUES ({placeholders}) RETURNING id"
-            result = self.db.execute_query(query, row_dict)
-            if result:
-                inserted_ids.append(result[0]["id"])
+        query = """
+            INSERT INTO raw_records (
+                upload_batch_id, business_name, pan, gstin, address, pincode,
+                district, state, registration_date, last_activity_date, department,
+                cleaned_name, cleaned_pan, cleaned_gstin, cleaned_address,
+                normalized_pincode, name_phonetic
+            )
+            VALUES (
+                :upload_batch_id, :business_name, :pan, :gstin, :address, :pincode,
+                :district, :state, :registration_date, :last_activity_date, :department,
+                :cleaned_name, :cleaned_pan, :cleaned_gstin, :cleaned_address,
+                :normalized_pincode, :name_phonetic
+            )
+            RETURNING id
+        """
+
+        with self.db.get_connection() as conn:
+            for row_idx, (_, row) in enumerate(df_to_store.iterrows()):
+                row_dict = {col: self._safe_na(row.get(col)) for col in df_to_store.columns}
+                result = conn.execute(text(query), row_dict)
+                inserted = result.fetchone()
+                if inserted is not None:
+                    inserted_ids[row_idx] = int(inserted[0])
 
         return inserted_ids
 
@@ -153,38 +182,33 @@ class DataService:
                 continue
             ubid_groups.setdefault(ubid, {"indices": [], "assignment": assignment})["indices"].append(idx)
 
-        for ubid, group_data in ubid_groups.items():
-            try:
-                indices = [i for i in group_data.get("indices", []) if isinstance(i, int) and 0 <= i < len(df)]
-                if not indices:
-                    continue
+        with self.db.get_connection() as conn:
+            for ubid, group_data in ubid_groups.items():
+                try:
+                    indices = [i for i in group_data.get("indices", []) if isinstance(i, int) and 0 <= i < len(df)]
+                    if not indices:
+                        continue
 
-                assignment = group_data["assignment"]
-                master_idx = indices[0]
-                master_record = df.iloc[master_idx]
-                db_ids = [self._safe_na(df.iloc[i].get("db_id", i)) for i in indices]
-                db_ids = [x for x in db_ids if x is not None]
-                if not db_ids:
-                    continue
+                    assignment = group_data["assignment"]
+                    master_idx = indices[0]
+                    master_record = df.iloc[master_idx]
+                    db_ids = [self._safe_na(df.iloc[i].get("db_id", i)) for i in indices]
+                    db_ids = [int(x) for x in db_ids if x is not None]
+                    if not db_ids:
+                        continue
 
-                master_db_id = db_ids[0]
-                self._store_ubid_registry(ubid, master_record, assignment, len(indices))
-                stored_ubids += 1
+                    master_db_id = db_ids[0]
+                    self._store_ubid_registry(conn, ubid, master_record, assignment, len(indices))
+                    stored_ubids += 1
 
-                group_id = self._store_matched_group(ubid, master_db_id, db_ids, assignment)
-                if group_id:
-                    stored_groups += 1
+                    group_id = self._store_matched_group(conn, ubid, master_db_id, db_ids, assignment)
+                    if group_id:
+                        stored_groups += 1
+                except Exception as exc:
+                    logger.warning("Skipping UBID group %s: %s", ubid, exc)
 
-                if assignment.get("decision") == "NeedsReview" and len(db_ids) > 1 and group_id:
-                    for i in range(len(db_ids)):
-                        for j in range(i + 1, len(db_ids)):
-                            item = self._add_to_review_queue(group_id, db_ids[i], db_ids[j], assignment)
-                            if item:
-                                review_queue_items += 1
-            except Exception as exc:
-                logger.warning("Skipping UBID group %s: %s", ubid, exc)
-
-        self._store_match_logs(batch_id, matches, ubid_assignments, df)
+            review_queue_items = self._store_review_queue(conn, batch_id, matches, df)
+            self._store_match_logs(conn, batch_id, matches, df)
 
         return {
             "ubids_stored": stored_ubids,
@@ -192,7 +216,7 @@ class DataService:
             "review_queue_items": review_queue_items,
         }
 
-    def _store_ubid_registry(self, ubid: str, master_record: pd.Series, assignment: Dict, total_records: int):
+    def _store_ubid_registry(self, conn, ubid: str, master_record: pd.Series, assignment: Dict, total_records: int):
         if not self._has_db():
             return
 
@@ -205,10 +229,22 @@ class DataService:
             VALUES
             (:ubid, :state_code, :district_code, :category, :sequence,
              :business_name, :primary_pan, :primary_gstin, :business_status,
-             :total_records, :last_activity_date, :registration_date)
+             :status_reason, :total_records, :last_activity_date, :registration_date)
             ON CONFLICT (ubid) DO UPDATE SET
+                state_code = EXCLUDED.state_code,
+                district_code = EXCLUDED.district_code,
+                category = EXCLUDED.category,
+                sequence_number = EXCLUDED.sequence_number,
+                business_name = EXCLUDED.business_name,
+                primary_pan = EXCLUDED.primary_pan,
+                primary_gstin = EXCLUDED.primary_gstin,
+                business_status = EXCLUDED.business_status,
+                status_reason = EXCLUDED.status_reason,
                 total_records = EXCLUDED.total_records,
+                last_activity_date = EXCLUDED.last_activity_date,
+                registration_date = EXCLUDED.registration_date,
                 updated_at = CURRENT_TIMESTAMP
+            RETURNING id
         """
         params = {
             "ubid": ubid,
@@ -217,16 +253,17 @@ class DataService:
             "category": parts[2] if len(parts) > 2 else "TR",
             "sequence": int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0,
             "business_name": self._safe_na(master_record.get("business_name")),
-            "primary_pan": self._safe_na(master_record.get("cleaned_pan")),
-            "primary_gstin": self._safe_na(master_record.get("cleaned_gstin")),
+            "primary_pan": self._safe_na(master_record.get("cleaned_pan") or master_record.get("pan")),
+            "primary_gstin": self._safe_na(master_record.get("cleaned_gstin") or master_record.get("gstin")),
             "business_status": self._safe_na(master_record.get("business_status")) or "Closed",
+            "status_reason": self._safe_na(master_record.get("status_reason")),
             "total_records": total_records,
             "last_activity_date": self._safe_na(master_record.get("last_activity_date")),
             "registration_date": self._safe_na(master_record.get("registration_date")),
         }
-        self.db.execute_command(query, params)
+        conn.execute(text(query), params)
 
-    def _store_matched_group(self, ubid: str, master_id: int, record_ids: List[int], assignment: Dict) -> Optional[int]:
+    def _store_matched_group(self, conn, ubid: str, master_id: int, record_ids: List[int], assignment: Dict) -> Optional[int]:
         if not self._has_db():
             return None
 
@@ -237,6 +274,15 @@ class DataService:
             VALUES
             (:ubid, :master_id, :record_ids, :confidence, :tier,
              :reason, :fields, :status)
+            ON CONFLICT (ubid) DO UPDATE SET
+                master_record_id = EXCLUDED.master_record_id,
+                record_ids = EXCLUDED.record_ids,
+                match_confidence = EXCLUDED.match_confidence,
+                match_tier = EXCLUDED.match_tier,
+                match_reason = EXCLUDED.match_reason,
+                matched_fields = EXCLUDED.matched_fields,
+                status = EXCLUDED.status,
+                updated_at = CURRENT_TIMESTAMP
             RETURNING id
         """
         params = {
@@ -249,10 +295,11 @@ class DataService:
             "fields": assignment.get("matched_fields", []),
             "status": "Active" if assignment.get("decision") == "AutoMerge" else "UnderReview",
         }
-        result = self.db.execute_query(query, params)
-        return result[0]["id"] if result else None
+        result = conn.execute(text(query), params)
+        row = result.fetchone()
+        return int(row[0]) if row else None
 
-    def _add_to_review_queue(self, group_id: int, record1_id: int, record2_id: int, assignment: Dict) -> Optional[int]:
+    def _add_to_review_queue(self, conn, group_id: Optional[int], record1_id: int, record2_id: int, assignment: Dict) -> Optional[int]:
         if not self._has_db():
             return None
 
@@ -260,7 +307,7 @@ class DataService:
             INSERT INTO review_queue
             (match_group_id, record1_id, record2_id, match_score, match_details, status)
             VALUES
-            (:group_id, :record1_id, :record2_id, :score, :details, 'Pending')
+            (:group_id, :record1_id, :record2_id, :score, CAST(:details AS JSONB), 'Pending')
             RETURNING id
         """
         params = {
@@ -268,16 +315,63 @@ class DataService:
             "record1_id": record1_id,
             "record2_id": record2_id,
             "score": float(assignment.get("confidence", 0.0) or 0.0),
-            "details": {
+            "details": self._json_text({
                 "tier": assignment.get("tier", ""),
                 "matched_fields": assignment.get("matched_fields", []),
                 "reason": "Weak match requires review",
-            },
+            }),
         }
-        result = self.db.execute_query(query, params)
-        return result[0]["id"] if result else None
+        result = conn.execute(text(query), params)
+        row = result.fetchone()
+        return int(row[0]) if row else None
 
-    def _store_match_logs(self, batch_id: str, matches: List, ubid_assignments: Dict, df: pd.DataFrame):
+    def _store_review_queue(self, conn, batch_id: str, matches: List, df: pd.DataFrame) -> int:
+        if not self._has_db() or not matches:
+            return 0
+
+        inserted = 0
+        query = """
+            INSERT INTO review_queue
+            (match_group_id, record1_id, record2_id, match_score, match_details, status)
+            VALUES
+            (:group_id, :record1_id, :record2_id, :score, CAST(:details AS JSONB), 'Pending')
+            RETURNING id
+        """
+
+        for match in matches:
+            if getattr(match, "decision", "") != "NeedsReview":
+                continue
+
+            idx1 = getattr(match, "record1_id", None)
+            idx2 = getattr(match, "record2_id", None)
+            if idx1 is None or idx2 is None:
+                continue
+
+            db_id1 = self._safe_na(df.iloc[idx1].get("db_id", idx1)) if idx1 < len(df) else idx1
+            db_id2 = self._safe_na(df.iloc[idx2].get("db_id", idx2)) if idx2 < len(df) else idx2
+            if db_id1 is None or db_id2 is None:
+                continue
+
+            params = {
+                "group_id": None,
+                "record1_id": int(db_id1),
+                "record2_id": int(db_id2),
+                "score": float(getattr(match, "score", 0.0) or 0.0),
+                "details": self._json_text({
+                    "tier": getattr(match, "tier", ""),
+                    "matched_fields": list(getattr(match, "matched_fields", []) or []),
+                    "reason": getattr(match, "reason", ""),
+                    "decision": getattr(match, "decision", "NeedsReview"),
+                    "upload_batch_id": batch_id,
+                }),
+            }
+            result = conn.execute(text(query), params)
+            if result.fetchone() is not None:
+                inserted += 1
+
+        return inserted
+
+    def _store_match_logs(self, conn, batch_id: str, matches: List, df: pd.DataFrame):
         if not self._has_db() or not matches:
             return
 
@@ -286,7 +380,7 @@ class DataService:
             (upload_batch_id, record1_id, record2_id, match_score, match_tier,
              match_fields, match_decision)
             VALUES
-            (:batch_id, :record1_id, :record2_id, :score, :tier, :fields, :decision)
+            (:batch_id, :record1_id, :record2_id, :score, :tier, CAST(:fields AS JSONB), :decision)
         """
 
         for match in matches:
@@ -300,14 +394,14 @@ class DataService:
 
             params = {
                 "batch_id": batch_id,
-                "record1_id": db_id1,
-                "record2_id": db_id2,
+                "record1_id": int(db_id1) if db_id1 is not None else None,
+                "record2_id": int(db_id2) if db_id2 is not None else None,
                 "score": float(getattr(match, "score", 0.0) or 0.0),
                 "tier": getattr(match, "tier", ""),
-                "fields": getattr(match, "matched_fields", []),
+                "fields": self._json_text(getattr(match, "matched_fields", [])),
                 "decision": getattr(match, "decision", ""),
             }
-            self.db.execute_command(query, params)
+            conn.execute(text(query), params)
 
     def get_batch_stats(self, batch_id: str) -> Dict:
         stats = {
@@ -374,9 +468,11 @@ class DataService:
                 """
                 SELECT COUNT(*) as count
                 FROM review_queue rq
-                JOIN matched_groups mg ON rq.match_group_id = mg.id
-                JOIN raw_records rr ON rr.id = ANY(mg.record_ids)
-                WHERE rr.upload_batch_id = :batch_id AND rq.status = 'Pending'
+                JOIN raw_records r1 ON rq.record1_id = r1.id
+                JOIN raw_records r2 ON rq.record2_id = r2.id
+                WHERE rq.status = 'Pending'
+                  AND r1.upload_batch_id = :batch_id
+                  AND r2.upload_batch_id = :batch_id
                 """,
                 {"batch_id": batch_id},
             )
@@ -394,22 +490,22 @@ class DataService:
             SELECT
                 rq.id as review_id,
                 rq.match_score,
-                rq.match_details,
-                rq.status as review_status,
-                rq.created_at,
-                r1.business_name as record1_name,
-                r1.pan as record1_pan,
-                r1.gstin as record1_gstin,
-                r1.address as record1_address,
-                r2.business_name as record2_name,
-                r2.pan as record2_pan,
-                r2.gstin as record2_gstin,
-                r2.address as record2_address,
-                mg.ubid
+            rq.match_details,
+            rq.status as review_status,
+            rq.created_at,
+            r1.business_name as record1_name,
+            r1.pan as record1_pan,
+            r1.gstin as record1_gstin,
+            r1.address as record1_address,
+            r2.business_name as record2_name,
+            r2.pan as record2_pan,
+            r2.gstin as record2_gstin,
+            r2.address as record2_address,
+            COALESCE(mg.ubid, '') as ubid
             FROM review_queue rq
             JOIN raw_records r1 ON rq.record1_id = r1.id
             JOIN raw_records r2 ON rq.record2_id = r2.id
-            JOIN matched_groups mg ON rq.match_group_id = mg.id
+            LEFT JOIN matched_groups mg ON rq.match_group_id = mg.id
             WHERE rq.status = :status
             ORDER BY rq.match_score DESC
             LIMIT :limit

@@ -14,12 +14,13 @@ Highlights:
 from __future__ import annotations
 
 import csv
+import hashlib
 import html
 import io
 import logging
 import os
+import json
 import tempfile
-import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -510,6 +511,147 @@ CSS = """
         font-weight: 700 !important;
         box-shadow: 0 0 16px rgba(0, 245, 212, 0.15) !important;
     }
+    .sidebar-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+    }
+    .sidebar-brand {
+        padding: 0.9rem 1rem;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.08), rgba(123, 47, 247, 0.04));
+        border: 1px solid var(--border-subtle);
+    }
+    .sidebar-brand-title {
+        font-size: 1.15rem;
+        font-weight: 900;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin-bottom: 0.2rem;
+    }
+    .sidebar-brand-subtitle {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+    }
+    .sidebar-section-label {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-weight: 800;
+    }
+    .sidebar-page-meta {
+        padding: 0.85rem 0.95rem;
+        border-radius: 16px;
+        border: 1px solid var(--border-subtle);
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .sidebar-page-meta h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+    .sidebar-page-meta p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+    .quality-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.08), rgba(59, 130, 246, 0.05));
+        border: 1px solid rgba(0, 245, 212, 0.16);
+        margin-bottom: 1rem;
+    }
+    .quality-score-ring {
+        min-width: 128px;
+        height: 128px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background:
+            radial-gradient(circle at center, rgba(3, 5, 8, 0.96) 0 56%, transparent 57%),
+            conic-gradient(var(--accent-cyan) 0% 0%, rgba(255, 255, 255, 0.08) 0% 100%);
+        border: 1px solid rgba(0, 245, 212, 0.18);
+        box-shadow: 0 0 24px rgba(0, 245, 212, 0.12);
+        text-align: center;
+    }
+    .quality-score-ring .score-value {
+        font-size: 2.2rem;
+        font-weight: 900;
+        color: var(--text-primary);
+        line-height: 1;
+        letter-spacing: -0.04em;
+    }
+    .quality-score-ring .score-label {
+        display: block;
+        margin-top: 0.2rem;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-weight: 800;
+    }
+    .quality-summary {
+        flex: 1;
+        min-width: 0;
+    }
+    .quality-summary h4 {
+        margin: 0 0 0.4rem 0;
+        font-size: 1.05rem;
+        color: var(--text-primary);
+    }
+    .quality-summary p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    .quality-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .quality-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+    .quality-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 999px;
+        border: 1px solid var(--border-subtle);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .results-ask-panel {
+        padding: 1rem 1.1rem;
+        border-radius: 18px;
+        border: 1px solid rgba(0, 245, 212, 0.12);
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.05), rgba(123, 47, 247, 0.03));
+    }
+    .results-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
 
     /* Buttons — Enhanced neon effects */
     .stButton > button {
@@ -862,6 +1004,10 @@ if "last_error" not in st.session_state:
     st.session_state.last_error = None
 if "ai_explanations" not in st.session_state:
     st.session_state.ai_explanations = {}
+if "quality_insights" not in st.session_state:
+    st.session_state.quality_insights = {}
+if "ask_apexforge_query" not in st.session_state:
+    st.session_state.ask_apexforge_query = ""
 if "ai_service_ready" not in st.session_state:
     st.session_state.ai_service_ready = None
 
@@ -893,6 +1039,290 @@ def format_confidence(value: Any) -> str:
         return f"{float(value):.1f}%"
     except Exception:
         return "N/A"
+
+
+def _normalize_series_text(series: pd.Series) -> pd.Series:
+    return series.fillna("").astype(str).str.strip()
+
+
+def build_quality_profile(df: pd.DataFrame) -> Dict[str, Any]:
+    """Build aggregated upload-quality metrics without sending raw rows anywhere."""
+    profile: Dict[str, Any] = {
+        "total_rows": int(len(df)) if df is not None else 0,
+        "total_columns": int(len(df.columns)) if df is not None else 0,
+        "missing_values": 0,
+        "missing_pct": 0.0,
+        "invalid_pan_count": 0,
+        "invalid_gstin_count": 0,
+        "probable_duplicate_density": 0.0,
+        "suspicious_regions": [],
+        "top_missing_fields": [],
+        "state_counts": {},
+        "district_counts": {},
+    }
+
+    if df is None or df.empty:
+        return profile
+
+    total_cells = max(1, len(df) * max(1, len(df.columns)))
+    profile["missing_values"] = int(df.isna().sum().sum())
+    profile["missing_pct"] = round((profile["missing_values"] / total_cells) * 100.0, 2)
+
+    required_subset = [col for col in REQUIRED_COLUMNS if col in df.columns]
+    if required_subset:
+        missing_by_field = df[required_subset].isna().sum().sort_values(ascending=False)
+        profile["top_missing_fields"] = [f"{idx}: {int(value)}" for idx, value in missing_by_field.head(3).items() if int(value) > 0]
+
+    if "pan" in df.columns:
+        pan_series = _normalize_series_text(df["pan"]).str.upper()
+        pan_valid = pan_series.str.fullmatch(r"[A-Z]{5}[0-9]{4}[A-Z]", na=False)
+        profile["invalid_pan_count"] = int((pan_series.ne("") & ~pan_valid).sum())
+
+    if "gstin" in df.columns:
+        gstin_series = _normalize_series_text(df["gstin"]).str.upper()
+        gstin_valid = gstin_series.str.fullmatch(r"[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]", na=False)
+        profile["invalid_gstin_count"] = int((gstin_series.ne("") & ~gstin_valid).sum())
+
+    duplicate_scores: List[float] = []
+    if "pan" in df.columns:
+        pan_non_empty = _normalize_series_text(df["pan"])
+        pan_non_empty = pan_non_empty[pan_non_empty.ne("")]
+        if not pan_non_empty.empty:
+            duplicate_scores.append(float(pan_non_empty.duplicated(keep=False).mean() * 100.0))
+    if "gstin" in df.columns:
+        gstin_non_empty = _normalize_series_text(df["gstin"])
+        gstin_non_empty = gstin_non_empty[gstin_non_empty.ne("")]
+        if not gstin_non_empty.empty:
+            duplicate_scores.append(float(gstin_non_empty.duplicated(keep=False).mean() * 100.0))
+    name_subset = [col for col in ["business_name", "state", "district"] if col in df.columns]
+    if name_subset:
+        name_frame = df[name_subset].fillna("").astype(str)
+        name_frame = name_frame[(name_frame != "").any(axis=1)]
+        if not name_frame.empty:
+            duplicate_scores.append(float(name_frame.duplicated(keep=False).mean() * 100.0))
+    profile["probable_duplicate_density"] = round(max(duplicate_scores) if duplicate_scores else 0.0, 2)
+
+    if "state" in df.columns:
+        state_counts = _normalize_series_text(df["state"]).replace("", pd.NA).value_counts(dropna=True)
+        profile["state_counts"] = {str(k): int(v) for k, v in state_counts.head(10).items()}
+
+    if "district" in df.columns:
+        district_counts = _normalize_series_text(df["district"]).replace("", pd.NA).value_counts(dropna=True)
+        profile["district_counts"] = {str(k): int(v) for k, v in district_counts.head(10).items()}
+
+    suspicious_regions: List[str] = []
+    state_code_map = {state.lower(): code for state, code in DataCleaner.STATE_CODES.items()}
+    state_code_map.update({code.lower(): code for code in DataCleaner.STATE_CODES.values()})
+    if "state" in df.columns and "gstin" in df.columns:
+        mismatch_counts: Dict[str, int] = {}
+        states = _normalize_series_text(df["state"]).str.lower()
+        gstins = _normalize_series_text(df["gstin"]).str.upper()
+        for state_value, gstin_value in zip(states, gstins):
+            if not state_value or not gstin_value or len(gstin_value) < 2:
+                continue
+            state_code = state_code_map.get(state_value)
+            gst_state = gstin_value[:2]
+            if state_code and gst_state != state_code:
+                mismatch_counts[state_value.title()] = mismatch_counts.get(state_value.title(), 0) + 1
+        if mismatch_counts:
+            suspicious_regions.extend([state for state, _ in sorted(mismatch_counts.items(), key=lambda item: item[1], reverse=True)[:3]])
+
+    if not suspicious_regions and profile["state_counts"]:
+        suspicious_regions = [str(state) for state in list(profile["state_counts"].keys())[:3]]
+
+    if not suspicious_regions and profile["district_counts"]:
+        suspicious_regions = [str(district) for district in list(profile["district_counts"].keys())[:3]]
+
+    profile["suspicious_regions"] = suspicious_regions[:3]
+    profile["quality_score"] = _calculate_quality_score(profile)
+    return profile
+
+
+def _calculate_quality_score(profile: Dict[str, Any]) -> int:
+    total_rows = max(1, int(profile.get("total_rows") or 0))
+    missing_pct = float(profile.get("missing_pct") or 0.0)
+    invalid_pan = int(profile.get("invalid_pan_count") or 0)
+    invalid_gstin = int(profile.get("invalid_gstin_count") or 0)
+    duplicate_density = float(profile.get("probable_duplicate_density") or 0.0)
+
+    penalty = min(40.0, missing_pct * 0.4)
+    penalty += min(20.0, (invalid_pan / total_rows) * 100.0 * 0.15)
+    penalty += min(20.0, (invalid_gstin / total_rows) * 100.0 * 0.15)
+    penalty += min(20.0, duplicate_density * 0.5)
+    return int(max(0, min(100, 100 - penalty)))
+
+
+def quality_profile_signature(profile: Dict[str, Any]) -> str:
+    payload = json.dumps(profile, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def apply_ask_apexforge_filters(df: pd.DataFrame, parsed: Dict[str, Any]) -> pd.DataFrame:
+    """Apply the lightweight NL filters returned by AIReviewService."""
+    if df is None or df.empty or not parsed:
+        return df
+
+    filtered = df.copy()
+    filters = parsed.get("filters") or {}
+
+    state = filters.get("state")
+    if state and "state" in filtered.columns:
+        filtered = filtered[filtered["state"].astype(str).str.lower() == str(state).lower()]
+
+    district = filters.get("district")
+    if district and "district" in filtered.columns:
+        filtered = filtered[filtered["district"].astype(str).str.lower().str.contains(str(district).lower(), na=False)]
+
+    status = filters.get("business_status")
+    if status and "business_status" in filtered.columns:
+        filtered = filtered[filtered["business_status"].astype(str).str.lower() == str(status).lower()]
+
+    decision = filters.get("match_decision")
+    if decision and "match_decision" in filtered.columns:
+        filtered = filtered[filtered["match_decision"].astype(str).str.lower() == str(decision).lower()]
+
+    tier = filters.get("match_tier")
+    if tier and "match_tier" in filtered.columns:
+        filtered = filtered[filtered["match_tier"].astype(str).str.lower() == str(tier).lower()]
+
+    if filters.get("group_only") and "group_size" in filtered.columns:
+        filtered = filtered[filtered["group_size"] > 1]
+
+    min_confidence = filters.get("min_confidence")
+    if min_confidence is not None and "match_confidence" in filtered.columns:
+        filtered = filtered[pd.to_numeric(filtered["match_confidence"], errors="coerce").fillna(0) >= float(min_confidence)]
+
+    max_confidence = filters.get("max_confidence")
+    if max_confidence is not None and "match_confidence" in filtered.columns:
+        filtered = filtered[pd.to_numeric(filtered["match_confidence"], errors="coerce").fillna(0) <= float(max_confidence)]
+
+    search_terms = [str(term).strip().lower() for term in (filters.get("search_terms") or []) if str(term).strip()]
+    if search_terms:
+        searchable_cols = [col for col in ["ubid", "business_name", "pan", "gstin", "district", "state", "department", "business_status"] if col in filtered.columns]
+        if searchable_cols:
+            mask = pd.Series(False, index=filtered.index)
+            for term in search_terms:
+                term_mask = pd.Series(False, index=filtered.index)
+                for col in searchable_cols:
+                    term_mask = term_mask | filtered[col].astype(str).str.lower().str.contains(term, na=False)
+                mask = mask | term_mask
+            filtered = filtered[mask]
+
+    sort_by_confidence = filters.get("sort_by_confidence")
+    if sort_by_confidence and "match_confidence" in filtered.columns:
+        filtered = filtered.assign(_confidence=pd.to_numeric(filtered["match_confidence"], errors="coerce").fillna(0))
+        filtered = filtered.sort_values("_confidence", ascending=str(sort_by_confidence).lower() == "asc")
+        filtered = filtered.drop(columns=["_confidence"])
+
+    limit = filters.get("limit")
+    if isinstance(limit, int) and limit > 0:
+        filtered = filtered.head(limit)
+
+    return filtered
+
+
+def render_quality_insights_panel(profile: Dict[str, Any], ai_result: Optional[Dict[str, Any]] = None) -> None:
+    """Show upload-quality metrics and, if available, a short AI summary."""
+    st.markdown("<div class='surface' style='margin-top: 1rem;'>", unsafe_allow_html=True)
+    st.markdown("**Dataset Quality**")
+
+    score = int(profile.get("quality_score") or 0)
+    score_label = "Healthy" if score >= 85 else "Watch closely" if score >= 70 else "Needs cleanup"
+    score_copy = (
+        f"Quality score {score}/100 from {int(profile.get('total_rows') or 0):,} rows. "
+        f"Missing data is {float(profile.get('missing_pct') or 0.0):.1f}% and duplicate density is "
+        f"{float(profile.get('probable_duplicate_density') or 0.0):.1f}%."
+    )
+    score_style = (
+        "radial-gradient(circle at center, rgba(3, 5, 8, 0.96) 0 56%, transparent 57%), "
+        f"conic-gradient(var(--accent-cyan) {score}%, rgba(255, 255, 255, 0.08) 0)"
+    )
+
+    st.markdown(
+        f"""
+        <div class="quality-hero">
+            <div class="quality-score-ring" style="background: {score_style};">
+                <div>
+                    <div class="score-value">{score}</div>
+                    <span class="score-label">out of 100</span>
+                </div>
+            </div>
+            <div class="quality-summary">
+                <h4>{score_label}</h4>
+                <p>{safe_text(score_copy)}</p>
+                <div class="quality-chip-list" style="margin-top: 0.75rem;">
+                    <span class="quality-chip">Rows {int(profile.get('total_rows') or 0):,}</span>
+                    <span class="quality-chip">Columns {int(profile.get('total_columns') or 0):,}</span>
+                    <span class="quality-chip">Missing {float(profile.get('missing_pct') or 0.0):.1f}%</span>
+                    <span class="quality-chip">Duplicates {float(profile.get('probable_duplicate_density') or 0.0):.1f}%</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.markdown(metric_card("Missing Cells", f"{int(profile.get('missing_values') or 0):,}", "orange"), unsafe_allow_html=True)
+    c2.markdown(metric_card("Invalid PAN", f"{int(profile.get('invalid_pan_count') or 0):,}", "pink"), unsafe_allow_html=True)
+    c3.markdown(metric_card("Invalid GSTIN", f"{int(profile.get('invalid_gstin_count') or 0):,}", "purple"), unsafe_allow_html=True)
+    c4.markdown(metric_card("Dup Density", f"{float(profile.get('probable_duplicate_density') or 0.0):.1f}%", "cyan"), unsafe_allow_html=True)
+
+    left, right = st.columns(2, gap="large")
+    with left:
+        st.markdown("**Top Missing Fields**")
+        missing_fields = profile.get("top_missing_fields") or []
+        if missing_fields:
+            chips = " ".join(
+                f"<span class='quality-chip'>{safe_text(item, escape_html=True)}</span>"
+                for item in missing_fields[:3]
+            )
+            st.markdown(f"<div class='quality-chip-list'>{chips}</div>", unsafe_allow_html=True)
+        else:
+            st.caption("No dominant missing-field pattern detected.")
+    with right:
+        st.markdown("**Suspicious Regions**")
+        suspicious_regions = profile.get("suspicious_regions") or []
+        if suspicious_regions:
+            chips = " ".join(
+                f"<span class='quality-chip'>{safe_text(item, escape_html=True)}</span>"
+                for item in suspicious_regions[:3]
+            )
+            st.markdown(f"<div class='quality-chip-list'>{chips}</div>", unsafe_allow_html=True)
+        else:
+            st.caption("No region anomalies detected.")
+
+    if ai_result:
+        with st.expander("AI quality insight", expanded=False):
+            st.markdown(
+                f"<span class='stat-pill {'pill-cyan' if ai_result.get('source') == 'gemini' else 'pill-blue'}'>"
+                f"{safe_text(ai_result.get('source', 'fallback')).title()}</span>",
+                unsafe_allow_html=True,
+            )
+            summary = ai_result.get("summary")
+            if summary:
+                st.write(summary)
+            bullets = ai_result.get("bullets") or []
+            if bullets:
+                st.markdown("\n".join([f"- {safe_text(item, escape_html=True)}" for item in bullets[:3]]), unsafe_allow_html=False)
+            risks = ai_result.get("risks") or []
+            if risks:
+                st.markdown(
+                    "<div class='quality-chip-list' style='margin-top:0.5rem;'>"
+                    + " ".join(f"<span class='quality-chip'>Risk: {safe_text(item, escape_html=True)}</span>" for item in risks[:3])
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+            recommendations = ai_result.get("recommendations") or []
+            if recommendations:
+                st.markdown(
+                    "<div class='quality-chip-list' style='margin-top:0.5rem;'>"
+                    + " ".join(f"<span class='quality-chip'>Fix: {safe_text(item, escape_html=True)}</span>" for item in recommendations[:3])
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def get_ai_service() -> Optional[Any]:
@@ -1030,6 +1460,8 @@ def reset_processing_state() -> None:
     st.session_state.status_summary = {}
     st.session_state.last_error = None
     st.session_state.ai_explanations = {}
+    st.session_state.quality_insights = {}
+    st.session_state.ask_apexforge_query = ""
 
 
 def init_database() -> Optional[Any]:
@@ -1265,10 +1697,23 @@ def metric_card(label: str, value: Any, variant: str = "cyan", delta: Optional[s
 
 
 def render_header() -> None:
+    if st.session_state.ai_service_ready is None:
+        try:
+            get_ai_service()
+        except Exception:
+            pass
+
     db_status = (
         '<span class="stat-pill pill-cyan">Database Connected</span>'
         if st.session_state.db_initialized
         else '<span class="stat-pill pill-amber">Local Mode</span>'
+    )
+    ai_status = (
+        '<span class="stat-pill pill-cyan">AI Ready</span>'
+        if st.session_state.ai_service_ready
+        else '<span class="stat-pill pill-purple">AI Idle</span>'
+        if st.session_state.ai_service_ready is None
+        else '<span class="stat-pill pill-amber">AI Offline</span>'
     )
     batch_status = (
         f'<span class="stat-pill pill-blue">Batch {st.session_state.batch_id}</span>'
@@ -1282,6 +1727,7 @@ def render_header() -> None:
             <p>Unified Business Identity System — clean uploads, intelligent matching, and UBID exploration at scale.</p>
             <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 {db_status}
+                {ai_status}
                 {batch_status}
             </div>
         </div>
@@ -1310,81 +1756,101 @@ def render_header() -> None:
 
 def render_sidebar() -> str:
     with st.sidebar:
+        nav_options = [
+            ("Upload", "📤 Upload a CSV and inspect schema mapping"),
+            ("Dashboard", "📊 Batch overview, match health, and quality trends"),
+            ("Results", "🔍 Filter records and ask ApexForge AI"),
+            ("UBID Explorer", "🎯 Search and inspect assigned identities"),
+            ("Network Graph", "🕸️ Visualize clusters and match links"),
+            ("Review Queue", "📝 Review ambiguous match decisions"),
+            ("Analytics", "📈 Public-facing batch metrics and trends"),
+        ]
+        nav_labels = [label for label, _ in nav_options]
+        page_copy = {label: copy for label, copy in nav_options}
+        nav_index = 0 if not st.session_state.processing_complete else 1
+
         st.markdown(
             """
-            <div style="padding: 0.5rem 0 1.5rem 0;">
-                <div style="font-size: 1.25rem; font-weight: 900; color: #f0f0f5; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.5rem;">
-                    🏢 ApexForge AI
-                </div>
-                <div style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;">
-                    Business Identity Pipeline
+            <div class="sidebar-shell">
+                <div class="sidebar-brand">
+                    <div class="sidebar-brand-title">🏢 ApexForge AI</div>
+                    <div class="sidebar-brand-subtitle">Unified Business Identity System</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        st.markdown("<hr style='margin: 1rem 0; opacity: 0.3;'>", unsafe_allow_html=True)
+        if st.session_state.processing_complete:
+            batch_label = safe_text(st.session_state.batch_id, "Ready")
+            status_html = (
+                '<span class="stat-pill pill-cyan">Database Connected</span>'
+                if st.session_state.db_initialized
+                else '<span class="stat-pill pill-amber">Local Mode</span>'
+            )
+            batch_html = f'<span class="stat-pill pill-blue">Batch {html.escape(batch_label)}</span>'
+        else:
+            status_html = (
+                '<span class="stat-pill pill-cyan">Database Connected</span>'
+                if st.session_state.db_initialized
+                else '<span class="stat-pill pill-amber">Local Mode</span>'
+            )
+            batch_html = '<span class="stat-pill pill-purple">Upload first</span>'
 
-        db_col1, db_col2 = st.columns([1, 1])
+        st.markdown(
+            f"""
+            <div class="sidebar-page-meta">
+                <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.55rem;">
+                    {status_html}
+                    {batch_html}
+                </div>
+                <h4>{safe_text(nav_labels[nav_index])}</h4>
+                <p>{safe_text(page_copy[nav_labels[nav_index]])}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        db_col1, db_col2 = st.columns(2)
         with db_col1:
-            if st.button("⚡ Connect DB", use_container_width=True, type="secondary"):
+            if st.button("Connect DB", use_container_width=True, type="secondary"):
                 init_database()
         with db_col2:
-            if st.button("🔄 Reset", use_container_width=True, type="secondary"):
+            if st.button("Reset", use_container_width=True, type="secondary"):
                 reset_processing_state()
                 st.rerun()
 
-        status_pills = []
-        if st.session_state.db_initialized:
-            status_pills.append("<span class='stat-pill pill-cyan'>Database Connected</span>")
-        else:
-            status_pills.append("<span class='stat-pill pill-amber'>Local Mode</span>")
-        if st.session_state.processing_complete:
-            status_pills.append("<span class='stat-pill pill-blue'>Batch Ready</span>")
-        if status_pills:
-            st.markdown(" ".join(status_pills), unsafe_allow_html=True)
-
-        st.markdown("<hr style='margin: 1rem 0; opacity: 0.3;'>", unsafe_allow_html=True)
-
-        nav_options = [
-            ("📤 Upload", "Upload"),
-            ("📊 Dashboard", "Dashboard"),
-            ("🔍 Results", "Results"),
-            ("🕸️ Network", "Network Graph"),
-            ("🎯 UBID", "UBID Explorer"),
-            ("📝 Review", "Review Queue"),
-            ("📈 Analytics", "Analytics")
-        ]
-        nav_labels = [label for _, label in nav_options]
-        nav_index = 0 if not st.session_state.processing_complete else 1
-
-        # Custom radio with icons
+        st.markdown("<div class='sidebar-section-label'>Navigate</div>", unsafe_allow_html=True)
         selected = st.radio(
             "",
             nav_labels,
             index=nav_index,
+            format_func=lambda value: {
+                "Upload": "📤 Upload",
+                "Dashboard": "📊 Dashboard",
+                "Results": "🔍 Results",
+                "UBID Explorer": "🎯 UBID Explorer",
+                "Network Graph": "🕸️ Network Graph",
+                "Review Queue": "📝 Review Queue",
+                "Analytics": "📈 Analytics",
+            }.get(value, str(value)),
             label_visibility="collapsed",
         )
 
-        # Display icon-based navigation
-        for icon, label in nav_options:
-            is_selected = selected == label
-            st.markdown(
-                f"""
-                <div style="padding: 0.4rem 0; cursor: pointer; {'background: linear-gradient(90deg, rgba(0, 245, 212, 0.1), transparent); border-left: 3px solid var(--accent-cyan);' if is_selected else ''}">
-                    <span style="font-size: 1rem; margin-right: 0.5rem;">{icon}</span>
-                    <span style="color: {'var(--accent-cyan)' if is_selected else 'var(--text-secondary)'}; font-weight: {'700' if is_selected else '500'};">{label}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        st.markdown(
+            f"""
+            <div class="sidebar-page-meta">
+                <h4>{safe_text(selected)}</h4>
+                <p>{safe_text(page_copy.get(selected, ""))}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("<hr style='margin: 1rem 0; opacity: 0.3;'>", unsafe_allow_html=True)
         st.markdown(
             """
             <div class="small-note" style="border-left: 2px solid var(--border-glow); padding-left: 0.75rem;">
-                💡 Drop a CSV, process it once, then explore matches, clusters, reviews, and UBIDs without leaving the app.
+                Drop a CSV once, then move through dashboard, review, graph, and UBID exploration without leaving the app.
             </div>
             """,
             unsafe_allow_html=True,
@@ -1502,6 +1968,21 @@ def render_upload_page() -> None:
             with st.expander("Preview data", expanded=True):
                 st.dataframe(mapped.head(10), use_container_width=True)
 
+            quality_profile = build_quality_profile(mapped)
+            quality_key = quality_profile_signature(quality_profile)
+            quality_ai_result = st.session_state.quality_insights.get(quality_key)
+            ai_service = get_ai_service()
+            if quality_ai_result is None and ai_service is not None and ai_service.is_available():
+                with st.spinner("Generating dataset quality insight..."):
+                    try:
+                        quality_ai_result = ai_service.analyze_data_quality(quality_profile, explicit=True)
+                        st.session_state.quality_insights[quality_key] = quality_ai_result
+                    except Exception as exc:
+                        logger.warning("Dataset quality insight failed: %s", exc)
+                        quality_ai_result = None
+
+            render_quality_insights_panel(quality_profile, quality_ai_result)
+
             st.markdown("<hr>", unsafe_allow_html=True)
             if st.button("Process file now", type="primary", use_container_width=True):
                 pipeline_process(mapped)
@@ -1560,6 +2041,29 @@ def render_dashboard() -> None:
     if "match_confidence" in df.columns and not df["match_confidence"].isna().all():
         avg_confidence = float(df["match_confidence"].mean())
 
+    st.markdown(
+        f"""
+        <div class="surface" style="margin-bottom: 1rem; background: linear-gradient(135deg, rgba(0, 245, 212, 0.05), rgba(123, 47, 247, 0.03));">
+            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:1rem; align-items:flex-start;">
+                <div style="min-width:260px; flex:1;">
+                    <div style="font-size:0.78rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.14em; margin-bottom:0.35rem;">Batch Overview</div>
+                    <div style="font-size:1.35rem; font-weight:900; color:var(--text-primary); letter-spacing:-0.03em;">{safe_text(st.session_state.batch_id, 'Current batch')}</div>
+                    <div class="small-note" style="margin-top:0.5rem; max-width:56rem;">
+                        This dashboard highlights batch size, match health, and entity quality so a judge can understand the pipeline at a glance.
+                    </div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:0.45rem; justify-content:flex-end;">
+                    <span class="stat-pill pill-cyan">{stats['total_records']:,} records</span>
+                    <span class="stat-pill pill-purple">{stats['ubids_generated']:,} UBIDs</span>
+                    <span class="stat-pill pill-amber">{stats['needs_review']:,} review items</span>
+                    <span class="stat-pill pill-blue">{stats['match_groups']:,} groups</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Animated KPI section
     st.markdown("<div class='dashboard-section' style='margin-bottom: 1.5rem;'>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
@@ -1579,12 +2083,13 @@ def render_dashboard() -> None:
     left, right = st.columns(2, gap="large")
 
     with left:
-        st.markdown("**Business Status**")
+        st.markdown("**Business Status Mix**")
         status_data = pd.DataFrame({
             "Status": ["Active", "Dormant", "Closed"],
             "Count": [stats["active_count"], stats["dormant_count"], stats["closed_count"]],
         })
         st.bar_chart(status_data, x="Status", y="Count", use_container_width=True)
+        st.caption("Operational mix across the processed batch.")
         st.markdown(
             f"<span class='stat-pill pill-green'>Active {stats['active_count']}</span>"
             f"<span class='stat-pill pill-amber'>Dormant {stats['dormant_count']}</span>"
@@ -1599,6 +2104,7 @@ def render_dashboard() -> None:
             "Count": [stats["auto_merge"], stats["needs_review"], stats["new_records"]],
         })
         st.bar_chart(decision_data, x="Decision", y="Count", use_container_width=True)
+        st.caption("How the pipeline handled each entity cluster.")
         st.markdown(
             f"<span class='stat-pill pill-green'>Auto Merge {stats['auto_merge']}</span>"
             f"<span class='stat-pill pill-amber'>Review {stats['needs_review']}</span>"
@@ -1624,6 +2130,7 @@ def render_dashboard() -> None:
                 conf_df.columns = ["Confidence Range", "Count"]
                 conf_df["Confidence Range"] = conf_df["Confidence Range"].astype(str)
                 st.bar_chart(conf_df, x="Confidence Range", y="Count", use_container_width=True)
+                st.caption("Higher bars indicate stronger record agreement.")
             else:
                 st.info("No confidence data available")
         else:
@@ -1647,6 +2154,7 @@ def render_dashboard() -> None:
                 }.get(tier, "pill-cyan")
                 pills += f"<span class='stat-pill {cls}'>{tier} {count}</span>"
             st.markdown(pills, unsafe_allow_html=True)
+            st.caption("Tier labels reflect the final grouping outcome.")
         else:
             st.info("No tier data available")
 
@@ -1685,13 +2193,15 @@ def render_dashboard() -> None:
     st.markdown("**Data Quality Overview**")
     dq_cols = [c for c in ["business_name", "pan", "gstin", "address", "district", "state"] if c in df.columns]
     if dq_cols:
-        missing_rows = []
+        chips = []
         for col in dq_cols:
             missing = int(df[col].isna().sum())
             pct = (missing / len(df)) * 100 if len(df) else 0
-            missing_rows.append([col.replace("_", " ").title(), f"{missing:,}", f"{pct:.1f}%"])
-        dq_df = pd.DataFrame(missing_rows, columns=["Field", "Missing", "Pct"])
-        st.dataframe(dq_df, use_container_width=True, hide_index=True)
+            chips.append(
+                f"<span class='quality-chip'>{safe_text(col.replace('_', ' ').title())}: {missing:,} missing ({pct:.1f}%)</span>"
+            )
+        st.markdown(f"<div class='quality-chip-list'>{' '.join(chips)}</div>", unsafe_allow_html=True)
+        st.caption("Missing values are shown per critical field instead of a dense table.")
     else:
         st.info("No data quality fields available")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1741,6 +2251,7 @@ def render_results_page() -> None:
         return
 
     df = st.session_state.df_processed.copy()
+    ai_service = get_ai_service()
 
     st.markdown("<div class='surface' style='margin-bottom: 1rem;'>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
@@ -1764,6 +2275,45 @@ def render_results_page() -> None:
             if col in filtered.columns:
                 mask = mask | filtered[col].astype(str).str.lower().str.contains(term, na=False)
         filtered = filtered[mask]
+
+    with st.expander("Ask ApexForge AI", expanded=False):
+        st.markdown(
+            """
+            <div class="results-ask-panel">
+                <div style="font-size:0.95rem; font-weight:700; color:var(--text-primary); margin-bottom:0.35rem;">
+                    Translate plain English into filters
+                </div>
+                <div class="small-note" style="margin-bottom:0.8rem;">
+                    Use state, district, status, tier, confidence, and text search together. The AI only filters the current batch.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        query = st.text_input(
+            "Natural language search",
+            key="ask_apexforge_query",
+            placeholder="Show dormant firms in Odisha with high confidence",
+            help="Uses a conservative parser. It never changes underlying matches.",
+        )
+        st.markdown(
+            "<div class='quality-chip-list' style='margin:0.65rem 0 0.2rem 0;'>"
+            "<span class='quality-chip'>show duplicate businesses in Odisha</span>"
+            "<span class='quality-chip'>dormant firms in Bengaluru</span>"
+            "<span class='quality-chip'>Tier1 records above 90 confidence</span>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        if query.strip():
+            parsed = ai_service.parse_search_query(query) if ai_service is not None else {"ok": False, "filters": {}, "description": "AI helper unavailable."}
+            st.caption(parsed.get("description", ""))
+            filtered = apply_ask_apexforge_filters(filtered, parsed)
+            if parsed.get("filters"):
+                pills = " ".join(
+                    f"<span class='stat-pill pill-cyan'>{safe_text(key, escape_html=True)}: {safe_text(value, escape_html=True)}</span>"
+                    for key, value in parsed.get("filters", {}).items()
+                )
+                st.markdown(pills, unsafe_allow_html=True)
 
     st.caption(f"Showing {len(filtered):,} of {len(df):,} records")
 
@@ -2022,7 +2572,11 @@ def render_review_queue() -> None:
         )
         return
 
-    matches = [m for m in st.session_state.matches if m.decision == "NeedsReview"]
+    matches = sorted(
+        [m for m in st.session_state.matches if m.decision == "NeedsReview"],
+        key=lambda m: float(m.score or 0.0),
+        reverse=True,
+    )
     if not matches:
         st.markdown(
             """
@@ -2053,6 +2607,7 @@ def render_review_queue() -> None:
     for i, m in enumerate(matches, start=1):
         r1 = df.iloc[m.record1_id]
         r2 = df.iloc[m.record2_id]
+        priority = "High" if float(m.score or 0.0) >= 85 else "Medium" if float(m.score or 0.0) >= 75 else "Low"
         ai_key = f"{m.record1_id}:{m.record2_id}:{float(m.score or 0.0):.1f}:{m.tier}:{m.decision}"
         cached_ai = st.session_state.ai_explanations.get(ai_key)
         if cached_ai is None and ai_service is not None:
@@ -2064,7 +2619,7 @@ def render_review_queue() -> None:
                 logger.debug("AI cache lookup skipped: %s", exc)
 
         with st.expander(
-            f"Review {i}: {safe_text(r1.get('business_name'))} vs {safe_text(r2.get('business_name'))} | {m.tier} | {m.score:.1f}%"
+            f"Review {i}: {safe_text(r1.get('business_name'))} vs {safe_text(r2.get('business_name'))} | {m.tier} | {m.score:.1f}% | {priority}"
         ):
             st.markdown("<div class='review-card'>", unsafe_allow_html=True)
             c1, c2 = st.columns(2)
@@ -2083,47 +2638,51 @@ def render_review_queue() -> None:
             st.markdown(
                 f"""
                 <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06);">
-                    <span class="stat-pill pill-blue">Reason: {m.reason}</span>
-                    <span class="stat-pill pill-purple">Fields: {', '.join(m.matched_fields)}</span>
+                    <span class="stat-pill pill-amber">Priority: {priority}</span>
+                    <span class="stat-pill pill-blue">Confidence: {m.score:.1f}%</span>
+                    <span class="stat-pill pill-blue">Reason: {safe_text(m.reason, escape_html=True)}</span>
+                    <span class="stat-pill pill-purple">Fields: {safe_text(', '.join(m.matched_fields) or 'N/A', escape_html=True)}</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
             st.markdown("<div style='margin-top: 0.75rem;'>", unsafe_allow_html=True)
-            if cached_ai is not None:
-                render_ai_review_result(cached_ai)
             if ai_service is None or not ai_service.is_available():
                 st.caption("AI review assistant is unavailable. Set `GEMINI_API_KEY` to enable optional explanations.")
             elif cached_ai is None and ai_service.should_offer_explanation(m):
                 st.caption("Optional AI explanation is available for this review item.")
 
-            if ai_service is not None and ai_service.is_available():
-                if st.button("Explain Match", key=f"explain_{ai_key}", use_container_width=True):
-                    with st.spinner("Generating concise AI explanation..."):
-                        try:
-                            result = ai_service.explain_match(m, r1, r2, explicit=True)
-                        except Exception as exc:
-                            logger.warning("AI explanation failed: %s", exc)
-                            result = {
-                                "ok": False,
-                                "source": "fallback",
-                                "cached": False,
-                                "recommendation": "Review",
-                                "confidence_summary": "AI explanation failed; deterministic review remains in place.",
-                                "uncertainty": safe_text(exc),
-                                "bullets": [
-                                    f"Decision: {m.decision}",
-                                    f"Score: {m.score:.1f}%",
-                                    "Human review remains the final step.",
-                                ],
-                                "evidence": list(m.matched_fields or [])[:3] or ["business_name"],
-                                "match_score": round(float(m.score or 0.0), 1),
-                                "tier": m.tier,
-                                "decision": m.decision,
-                            }
-                        st.session_state.ai_explanations[ai_key] = result
-                        render_ai_review_result(result)
+            with st.expander("AI explanation", expanded=bool(cached_ai)):
+                if cached_ai is not None:
+                    render_ai_review_result(cached_ai)
+
+                if ai_service is not None and ai_service.is_available():
+                    if st.button("Explain Match", key=f"explain_{ai_key}", use_container_width=True):
+                        with st.spinner("Generating concise AI explanation..."):
+                            try:
+                                result = ai_service.explain_match(m, r1, r2, explicit=True)
+                            except Exception as exc:
+                                logger.warning("AI explanation failed: %s", exc)
+                                result = {
+                                    "ok": False,
+                                    "source": "fallback",
+                                    "cached": False,
+                                    "recommendation": "Review",
+                                    "confidence_summary": "AI explanation failed; deterministic review remains in place.",
+                                    "uncertainty": safe_text(exc),
+                                    "bullets": [
+                                        f"Decision: {m.decision}",
+                                        f"Score: {m.score:.1f}%",
+                                        "Human review remains the final step.",
+                                    ],
+                                    "evidence": list(m.matched_fields or [])[:3] or ["business_name"],
+                                    "match_score": round(float(m.score or 0.0), 1),
+                                    "tier": m.tier,
+                                    "decision": m.decision,
+                                }
+                            st.session_state.ai_explanations[ai_key] = result
+                            render_ai_review_result(result)
             st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("</div>", unsafe_allow_html=True)

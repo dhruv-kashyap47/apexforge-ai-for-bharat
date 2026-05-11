@@ -1,8 +1,8 @@
 """Database connection and management module."""
-import os
 import logging
-from typing import Optional, List, Dict, Any
+import os
 from contextlib import contextmanager
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from sqlalchemy import create_engine, text, Engine
@@ -30,7 +30,22 @@ class DatabaseManager:
     def _connect(self):
         """Create database engine."""
         try:
-            self.engine = create_engine(self.database_url, pool_pre_ping=True)
+            engine_kwargs: Dict[str, Any] = {
+                "pool_pre_ping": True,
+                "pool_recycle": int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800")),
+                "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
+                "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
+            }
+
+            connect_args: Dict[str, Any] = {
+                "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT_SECONDS", "5")),
+            }
+            if self.database_url.startswith(("postgresql://", "postgres://")) and "sslmode=" not in self.database_url:
+                connect_args["sslmode"] = "require"
+
+            engine_kwargs["connect_args"] = connect_args
+
+            self.engine = create_engine(self.database_url, **engine_kwargs)
             logger.info("Database connection established successfully")
         except SQLAlchemyError as e:
             logger.error(f"Failed to connect to database: {e}")
@@ -52,17 +67,26 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    @contextmanager
+    def transaction(self):
+        """Context manager that keeps all statements in a single transaction."""
+        if not self.engine:
+            self._connect()
+
+        with self.engine.begin() as conn:
+            yield conn
+
     def execute_query(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
         """Execute a query and return results as list of dictionaries."""
         with self.get_connection() as conn:
-            result = conn.execute(text(query), params or {})
+            result = conn.execute(text(query), self._normalize_params(params))
             columns = result.keys()
             return [dict(zip(columns, row)) for row in result.fetchall()]
 
     def execute_command(self, command: str, params: Optional[Dict] = None) -> int:
         """Execute a command (INSERT, UPDATE, DELETE) and return affected rows."""
         with self.get_connection() as conn:
-            result = conn.execute(text(command), params or {})
+            result = conn.execute(text(command), self._normalize_params(params))
             return result.rowcount
 
     def insert_dataframe(self, df: pd.DataFrame, table_name: str, if_exists: str = 'append'):
@@ -81,7 +105,7 @@ class DatabaseManager:
             with self.get_connection() as conn:
                 # Use SQLAlchemy text() for proper parameter binding
                 from sqlalchemy import text
-                result = pd.read_sql(text(query), conn, params=params)
+                result = pd.read_sql(text(query), conn, params=self._normalize_params(params))
                 return result
         except SQLAlchemyError as e:
             logger.error(f"Failed to read data: {e}")
@@ -316,6 +340,64 @@ class DatabaseManager:
             'category': category
         })
         return result[0]['next_seq'] if result else 1
+
+    def health_check(self) -> Dict[str, Any]:
+        """Return a small DB health snapshot for the UI."""
+        status: Dict[str, Any] = {
+            "configured": bool(self.database_url),
+            "connected": False,
+            "engine_ready": self.engine is not None,
+            "error": None,
+        }
+
+        try:
+            with self.get_connection() as conn:
+                conn.execute(text("SELECT 1"))
+            status["connected"] = True
+        except Exception as exc:
+            status["error"] = str(exc)
+
+        return status
+
+    def _normalize_params(self, params: Optional[Dict]) -> Dict[str, Any]:
+        """Convert pandas/numpy scalar values into driver-friendly Python values."""
+        if not params:
+            return {}
+
+        normalized: Dict[str, Any] = {}
+        for key, value in params.items():
+            normalized[key] = self._normalize_value(value)
+        return normalized
+
+    def _normalize_value(self, value: Any) -> Any:
+        """Convert nested values into something SQLAlchemy/Postgres can bind safely."""
+        if value is None:
+            return None
+
+        try:
+            if pd.isna(value):
+                return None
+        except Exception:
+            pass
+
+        if isinstance(value, pd.Timestamp):
+            return value.to_pydatetime()
+
+        if isinstance(value, dict):
+            return {k: self._normalize_value(v) for k, v in value.items()}
+
+        if isinstance(value, (list, tuple, set)):
+            return [self._normalize_value(item) for item in value]
+
+        try:
+            import numpy as np  # local import keeps the module light
+
+            if isinstance(value, np.generic):
+                return value.item()
+        except Exception:
+            pass
+
+        return value
 
 
 # Global database manager instance

@@ -4,7 +4,8 @@ This module is built to play nicely with the cleaner, matcher, and status analyz
 It supports:
 - deterministic UBID formatting
 - safe fallback codes
-- per state/district/category sequencing
+- per state/district/category identity prefixes
+- randomized 7-digit suffixes with collision checks
 - grouped assignment for matched records
 - display parsing helpers
 
@@ -22,6 +23,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+import secrets
 from typing import Dict, List, Optional, Tuple, Any
 
 import pandas as pd
@@ -67,6 +69,7 @@ class UBIDGenerator:
         """
         self.db_manager = db_manager
         self.sequence_cache: Dict[str, int] = {}
+        self.used_suffixes: Dict[str, set[int]] = defaultdict(set)
         self.generated_ubids: List[str] = []
 
     def generate_ubid(
@@ -85,41 +88,36 @@ class UBIDGenerator:
             sequence = self._get_next_sequence(state_code, district_code, category_code)
         else:
             sequence = self._normalize_sequence(sequence)
-            self._sync_sequence_cache(state_code, district_code, category_code, sequence)
+            self._register_sequence(state_code, district_code, category_code, sequence)
 
         ubid = f"{state_code}-{district_code}-{category_code}-{sequence:07d}"
         self.generated_ubids.append(ubid)
         return ubid
 
     def _get_next_sequence(self, state_code: str, district_code: str, category_code: str) -> int:
-        """Get the next sequence for a state-district-category combination."""
+        """Get a random 7-digit suffix for a state-district-category combination."""
         cache_key = self._cache_key(state_code, district_code, category_code)
 
-        if cache_key in self.sequence_cache:
-            self.sequence_cache[cache_key] += 1
-            return self.sequence_cache[cache_key]
+        for _ in range(32):
+            sequence = secrets.randbelow(10_000_000)
+            if sequence == 0:
+                sequence = 1
+            if sequence not in self.used_suffixes[cache_key]:
+                self._register_sequence(state_code, district_code, category_code, sequence)
+                return sequence
 
-        # Try DB first.
-        if self.db_manager is not None:
-            try:
-                next_seq = self.db_manager.get_next_sequence_number(
-                    state_code, district_code, category_code
-                )
-                next_seq = self._normalize_sequence(next_seq)
-                self.sequence_cache[cache_key] = next_seq
-                return next_seq
-            except Exception as exc:
-                logger.warning("Could not get sequence from DB: %s", exc)
+        # Extremely unlikely fallback: keep the format stable and avoid an infinite loop.
+        sequence = self._normalize_sequence(self.sequence_cache.get(cache_key, 1) + 1)
+        sequence = min(sequence, 9_999_999)
+        self._register_sequence(state_code, district_code, category_code, sequence)
+        return sequence
 
-        # Safe fallback.
-        self.sequence_cache[cache_key] = 1
-        return 1
-
-    def _sync_sequence_cache(self, state_code: str, district_code: str, category_code: str, sequence: int) -> None:
-        """Ensure the cache never goes backwards."""
+    def _register_sequence(self, state_code: str, district_code: str, category_code: str, sequence: int) -> None:
+        """Record a suffix so we do not reuse it within the current runtime."""
         cache_key = self._cache_key(state_code, district_code, category_code)
         current = self.sequence_cache.get(cache_key, 0)
         self.sequence_cache[cache_key] = max(current, sequence)
+        self.used_suffixes[cache_key].add(sequence)
 
     def _cache_key(self, state_code: str, district_code: str, category_code: str) -> str:
         return f"{state_code}-{district_code}-{category_code}"
@@ -385,6 +383,7 @@ class UBIDGenerator:
     def reset_state(self) -> None:
         """Reset generated UBIDs and sequence cache."""
         self.sequence_cache.clear()
+        self.used_suffixes.clear()
         self.generated_ubids.clear()
 
 
