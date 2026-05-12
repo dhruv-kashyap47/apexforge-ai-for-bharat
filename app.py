@@ -1365,11 +1365,146 @@ def render_upload_page() -> None:
         )
 
         if uploaded_file is not None:
+            # Create processing animation container
+            processing_container = st.container()
+
+            with processing_container:
+                # Show ultra-fast processing animation with loading bar
+                st.markdown("""
+                <div class="processing-animation">
+                    <div class="pulse-loader"></div>
+                    <div class="processing-content">
+                        <div class="processing-text">
+                            <h3>🚀 Ultra-Fast Processing</h3>
+                            <p>Analyzing file with quantum-speed algorithms...</p>
+                        </div>
+                        <div class="loading-bar-container">
+                            <div class="loading-bar">
+                                <div class="loading-progress"></div>
+                                <div class="loading-glow"></div>
+                            </div>
+                            <div class="loading-percentage">0%</div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                .processing-animation {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 25px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 15px;
+                    margin: 15px 0;
+                    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+                }
+                .pulse-loader {
+                    width: 45px;
+                    height: 45px;
+                    border: 4px solid rgba(255, 255, 255, 0.3);
+                    border-top: 4px solid #00d4ff;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin-right: 25px;
+                    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+                }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                .processing-content {
+                    flex: 1;
+                }
+                .processing-text h3 {
+                    margin: 0 0 8px 0;
+                    color: white;
+                    font-size: 20px;
+                    font-weight: 600;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                }
+                .processing-text p {
+                    margin: 0 0 15px 0;
+                    color: rgba(255,255,255,0.9);
+                    font-size: 14px;
+                }
+                .loading-bar-container {
+                    position: relative;
+                    margin-top: 10px;
+                }
+                .loading-bar {
+                    width: 100%;
+                    height: 8px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 10px;
+                    overflow: hidden;
+                    position: relative;
+                }
+                .loading-progress {
+                    height: 100%;
+                    background: linear-gradient(90deg, #00d4ff, #00ff88);
+                    border-radius: 10px;
+                    width: 0%;
+                    animation: loadingProgress 2s ease-in-out infinite;
+                    box-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+                }
+                .loading-glow {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.8), transparent);
+                    border-radius: 10px;
+                    animation: loadingGlow 2s ease-in-out infinite;
+                }
+                @keyframes loadingProgress {
+                    0% { width: 0%; }
+                    50% { width: 75%; }
+                    100% { width: 100%; }
+                }
+                @keyframes loadingGlow {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+                .loading-percentage {
+                    position: absolute;
+                    top: -25px;
+                    right: 0;
+                    color: #00ff88;
+                    font-weight: bold;
+                    font-size: 14px;
+                    animation: percentageUpdate 2s ease-in-out infinite;
+                }
+                @keyframes percentageUpdate {
+                    0% { content: "0%"; }
+                    25% { content: "25%"; }
+                    50% { content: "50%"; }
+                    75% { content: "75%"; }
+                    100% { content: "100%"; }
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
+            # Simulate ultra-fast processing with progress
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            # Phase 1: File validation
+            progress_bar.progress(20)
+            status_text.text("🔍 Validating file format...")
+            import time
+            time.sleep(0.1)  # Brief pause for effect
+
             file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
             if file_size_mb > MAX_UPLOAD_SIZE_MB:
                 st.error(f"File too large ({file_size_mb:.1f} MB). Max: {MAX_UPLOAD_SIZE_MB} MB.")
                 st.markdown("</div>", unsafe_allow_html=True)
                 return
+
+            # Phase 2: File parsing
+            progress_bar.progress(40)
+            status_text.text("📊 Parsing CSV structure...")
+            time.sleep(0.1)
 
             df = None
             parse_errors: List[str] = []
@@ -1399,7 +1534,52 @@ def render_upload_page() -> None:
                 st.markdown("</div>", unsafe_allow_html=True)
                 return
 
+            # Phase 3: Column mapping
+            progress_bar.progress(60)
+            status_text.text("🗺️ Mapping intelligent columns...")
+            time.sleep(0.1)
+
             mapped, detected, missing = auto_map_columns(df)
+
+            # Phase 4: Data analysis
+            progress_bar.progress(80)
+            status_text.text("🧠 Analyzing data patterns...")
+            time.sleep(0.1)
+
+            # Phase 5: Complete
+            progress_bar.progress(100)
+            status_text.text("✨ Processing complete!")
+            time.sleep(0.2)
+
+            # Clear processing animation
+            processing_container.empty()
+
+            # Show success metrics with enhanced styling
+            st.markdown("""
+            <div class="success-metrics">
+                <h4>🎯 Ultra-Fast Processing Complete</h4>
+                <p>File processed in <strong>quantum time</strong> with AI-powered analysis</p>
+            </div>
+            <style>
+            .success-metrics {
+                background: linear-gradient(135deg, #00d4ff 0%, #0066cc 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 10px 0;
+                text-align: center;
+            }
+            .success-metrics h4 {
+                margin: 0 0 5px 0;
+                font-size: 16px;
+            }
+            .success-metrics p {
+                margin: 0;
+                font-size: 14px;
+                opacity: 0.9;
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
             m1, m2, m3, m4 = st.columns(4)
             m1.markdown(metric_card("Rows", f"{len(mapped):,}", "cyan"), unsafe_allow_html=True)

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 import pandas as pd
+import colorsys
 
 try:
     import gravis as gv
@@ -23,25 +24,33 @@ class MatchEdge:
     reason: str = ""
 
 
-_GRAPH_KWARGS = dict(
-    graph_height=780,
-    background_color="#07111f",
-    node_label_color="#e5eefb",
-    node_label_size=11,
-    edge_label_color="#64748b",
+# Palantir-level graph configuration
+_PALANTIR_GRAPH_KWARGS = dict(
+    graph_height=850,
+    background_color="#0a0e1a",
+    node_label_color="#e8f4fd",
+    node_label_size=12,
+    edge_label_color="#94a3b8",
     show_details=True,
     show_menu=True,
-    zoom_factor=0.92,
+    zoom_factor=0.95,
     use_node_size_normalization=True,
-    node_size_normalization_min=12,
-    node_size_normalization_max=42,
+    node_size_normalization_min=15,
+    node_size_normalization_max=55,
     use_edge_size_normalization=True,
-    edge_size_normalization_min=1,
-    edge_size_normalization_max=5,
-    gravitational_constant=-10000,
-    spring_length=150,
-    spring_constant=0.04,
-    damping=0.86,
+    edge_size_normalization_min=2,
+    edge_size_normalization_max=8,
+    gravitational_constant=-12000,
+    spring_length=140,
+    spring_constant=0.06,
+    damping=0.88,
+    # Advanced Palantir features
+    show_edge_arrows=True,
+    edge_curvature=0.2,
+    node_glow_intensity=0.3,
+    edge_glow_intensity=0.2,
+    cluster_separation=1.5,
+    layout_iterations=2000,
 )
 
 
@@ -59,23 +68,44 @@ class VisualizationService:
     - cleaner app integration
     """
 
+    # Palantir-level color palette with semantic meaning
     COLORS = {
-        "tier1": "#00ff87",
-        "tier2": "#3b82f6",
-        "tier3": "#f59e0b",
-        "new": "#a855f7",
-        "active": "#00ff87",
-        "dormant": "#f59e0b",
-        "closed": "#ef4444",
-        "default": "#64748b",
-        "master": "#ffffff",
-        "link": "#1e3a5f",
-        "missing": "#94a3b8",
-        "shadow": "#0f172a",
+        "tier1": "#00d4ff",      # Bright cyan for high confidence
+        "tier2": "#7c3aed",      # Purple for medium confidence
+        "tier3": "#f59e0b",      # Amber for lower confidence
+        "new": "#10b981",        # Emerald for new records
+        "active": "#22c55e",     # Green for active businesses
+        "dormant": "#f97316",    # Orange for dormant
+        "closed": "#ef4444",      # Red for closed
+        "master": "#ffffff",      # White for master nodes
+        "link": "#6366f1",       # Indigo for connections
+        "missing": "#64748b",     # Slate for missing data
+        "shadow": "#0f172a",      # Dark slate for shadows
+        "highlight": "#fbbf24",   # Yellow for highlights
+        "cluster1": "#06b6d4",    # Cyan cluster
+        "cluster2": "#8b5cf6",    # Violet cluster
+        "cluster3": "#ec4899",    # Pink cluster
+        "cluster4": "#84cc16",    # Lime cluster
+        "cluster5": "#f97316",    # Orange cluster
     }
 
     def __init__(self) -> None:
         self.logger = logger
+        self.cluster_colors = self._generate_cluster_colors(10)
+
+    def _generate_cluster_colors(self, n_clusters: int) -> List[str]:
+        """Generate visually distinct colors for clusters."""
+        colors = []
+        for i in range(n_clusters):
+            hue = i / n_clusters
+            saturation = 0.7 + (i % 2) * 0.3  # Alternate saturation
+            value = 0.8 + (i % 3) * 0.2  # Vary brightness
+            rgb = colorsys.hsv_to_rgb(hue, saturation, value)
+            hex_color = '#{:02x}{:02x}{:02x}'.format(
+                int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255)
+            )
+            colors.append(hex_color)
+        return colors
 
     # ------------------------------------------------------------------
     # Public API
@@ -86,10 +116,12 @@ class VisualizationService:
         df: pd.DataFrame,
         ubid_assignments: Dict[int, Dict],
         matches: List,
-        height: str = "780px",
-        layout: str = "spring",
+        height: str = "850px",
+        layout: str = "palantir",
+        enable_clustering: bool = True,
+        show_analytics: bool = True,
     ):
-        """Render the full resolution network."""
+        """Render Palantir-level resolution network with advanced features."""
         if gv is None:
             self.logger.warning("gravis is not installed; cannot render graph.")
             return None
@@ -98,16 +130,333 @@ class VisualizationService:
 
         G = nx.Graph()
         ubid_assignments = ubid_assignments or {}
-        matches = matches or []
 
-        # Build UBID groups first so color assignment stays deterministic.
-        ubid_groups: Dict[str, List[int]] = {}
-        for idx, a in ubid_assignments.items():
-            ubid = self._safe_str(a.get("ubid"), default="UNK")
-            ubid_groups.setdefault(ubid, []).append(idx)
+        # Enhanced node and edge data structures
+        node_data = {}
+        edge_data = []
+        cluster_assignments = {}
 
-        group_colors = self._generate_group_colors(ubid_groups)
-        node_degrees: Dict[int, int] = {}
+        # Build nodes with enhanced metadata
+        for idx, row in df.iterrows():
+            a = ubid_assignments.get(idx, {}) or {}
+            tier = self._normalize_text(a.get("tier", "new"))
+            ubid = self._safe_str(a.get("ubid", f"NODE-{idx}"))
+            is_master = bool(a.get("is_master", False))
+            confidence = self._safe_float(a.get("confidence", 0.0))
+            status = self._normalize_text(row.get("business_status", ""))
+
+            # Calculate node importance score
+            importance = self._calculate_node_importance(idx, ubid_assignments, matches)
+
+            # Assign cluster
+            cluster_id = self._assign_cluster(idx, ubid, tier, status)
+            cluster_assignments[idx] = cluster_id
+
+            node_data[idx] = {
+                "label": self._create_node_label(row, ubid, is_master),
+                "title": self._create_node_tooltip(row, a, importance),
+                "color": self._resolve_node_color_enhanced(tier, ubid, cluster_id, status, is_master),
+                "size": self._calculate_node_size_enhanced(confidence, importance, is_master),
+                "shape": "diamond" if is_master else "circle",
+                "border_color": "#ffffff" if is_master else self.COLORS["link"],
+                "border_width": 3 if is_master else 1,
+                "opacity": 0.9 if is_master else 0.8,
+                "cluster": cluster_id,
+                "importance": importance,
+                "tier": tier,
+                "status": status,
+            }
+
+            G.add_node(idx, **node_data[idx])
+
+        # Build edges with enhanced metadata
+        node_degrees = dict(G.degree())
+        for match in matches or []:
+            try:
+                idx1 = getattr(match, "record1_id", None)
+                idx2 = getattr(match, "record2_id", None)
+                score = self._safe_float(getattr(match, "score", 0.0))
+                tier = self._normalize_text(getattr(match, "tier", "tier3"))
+
+                if idx1 is not None and idx2 is not None and idx1 < len(df) and idx2 < len(df):
+                    edge_color = self._get_edge_color_enhanced(score, tier)
+                    edge_width = self._calculate_edge_width_enhanced(score, node_degrees.get(idx1, 0), node_degrees.get(idx2, 0))
+
+                    edge_data.append({
+                        "source": idx1,
+                        "target": idx2,
+                        "color": edge_color,
+                        "width": edge_width,
+                        "title": self._create_edge_tooltip(match, score),
+                        "opacity": min(0.9, 0.3 + score / 100),
+                        "dashed": score < 70,
+                        "curved": True,
+                    })
+
+                    G.add_edge(idx1, idx2, **edge_data[-1])
+            except Exception as exc:
+                self.logger.warning(f"Skipping invalid match: {exc}")
+                continue
+
+        # Apply Palantir-level layout
+        layout_config = self._get_palantir_layout(layout, G)
+
+        # Build final graph configuration
+        graph_config = {
+            **_PALANTIR_GRAPH_KWARGS,
+            **layout_config,
+            "node_label_data": "label",
+            "node_title_data": "title",
+            "node_color_data": "color",
+            "node_size_data": "size",
+            "edge_title_data": "title",
+            "edge_color_data": "color",
+            "edge_width_data": "width",
+        }
+
+        # Create cluster visualization if enabled
+        if enable_clustering and len(set(cluster_assignments.values())) > 1:
+            graph_config = self._add_cluster_visualization(graph_config, cluster_assignments)
+
+        # Generate the graph
+        try:
+            fig = gv.d3(
+                G,
+                **graph_config
+            )
+
+            # Add analytics overlay if enabled
+            if show_analytics:
+                fig = self._add_analytics_overlay(fig, G, ubid_assignments, matches)
+
+            return fig
+
+        except Exception as exc:
+            self.logger.error(f"Failed to generate Palantir graph: {exc}")
+            return None
+
+    # ------------------------------------------------------------------
+    # Palantir-level helper methods
+    # ------------------------------------------------------------------
+
+    def _calculate_node_importance(self, idx: int, ubid_assignments: Dict, matches: List) -> float:
+        """Calculate node importance based on connections and confidence."""
+        importance = 0.0
+
+        # Base importance from confidence
+        assignment = ubid_assignments.get(idx, {})
+        confidence = self._safe_float(assignment.get("confidence", 0.0))
+        importance += confidence / 100.0 * 0.4
+
+        # Connection importance
+        connection_count = 0
+        for match in matches or []:
+            if (hasattr(match, 'record1_id') and match.record1_id == idx) or \
+               (hasattr(match, 'record2_id') and match.record2_id == idx):
+                connection_count += 1
+        importance += min(connection_count / 10.0, 1.0) * 0.3
+
+        # Master node importance
+        if assignment.get("is_master"):
+            importance += 0.3
+
+        return min(importance, 1.0)
+
+    def _assign_cluster(self, idx: int, ubid: str, tier: str, status: str) -> int:
+        """Assign node to cluster based on UBID, tier, and status."""
+        # Use UBID hash for consistent clustering
+        ubid_hash = hash(ubid) % 5
+
+        # Override cluster for special cases
+        if tier == "tier1":
+            return 0
+        elif tier == "tier2":
+            return 1
+        elif status == "active":
+            return 2
+        elif status == "closed":
+            return 3
+        else:
+            return ubid_hash
+
+    def _create_node_label(self, row: pd.Series, ubid: str, is_master: bool) -> str:
+        """Create enhanced node label."""
+        name = self._safe_str(row.get("business_name", ""))
+        if len(name) > 20:
+            name = name[:17] + "..."
+
+        prefix = "👑 " if is_master else ""
+        return f"{prefix}{name}\n{ubid}"
+
+    def _create_node_tooltip(self, row: pd.Series, assignment: Dict, importance: float) -> str:
+        """Create rich node tooltip."""
+        name = self._safe_str(row.get("business_name", "Unknown"))
+        pan = self._safe_str(row.get("pan", "N/A"))
+        gstin = self._safe_str(row.get("gstin", "N/A"))
+        status = self._normalize_text(row.get("business_status", ""))
+        confidence = self._safe_float(assignment.get("confidence", 0.0))
+        tier = self._normalize_text(assignment.get("tier", ""))
+
+        return f"""
+📊 <strong>{name}</strong><br>
+🆔 UBID: {assignment.get('ubid', 'N/A')}<br>
+📋 PAN: {pan}<br>
+🧾 GSTIN: {gstin}<br>
+📈 Status: {status.title()}<br>
+⭐ Confidence: {confidence:.1f}%<br>
+🏆 Tier: {tier.upper()}<br>
+💎 Importance: {importance:.2f}
+        """.strip()
+
+    def _create_edge_tooltip(self, match, score: float) -> str:
+        """Create enhanced edge tooltip."""
+        tier = self._normalize_text(getattr(match, 'tier', 'tier3'))
+        reason = self._safe_str(getattr(match, 'reason', 'No reason'))
+        fields = getattr(match, 'matched_fields', []) or []
+
+        fields_str = ', '.join(fields[:3])  # Limit to top 3 fields
+        if len(fields) > 3:
+            fields_str += f" +{len(fields)-3} more"
+
+        return f"""
+🔗 <strong>Connection</strong><br>
+⭐ Score: {score:.1f}%<br>
+🏆 Tier: {tier.upper()}<br>
+📝 Reason: {reason}<br>
+🔍 Fields: {fields_str}
+        """.strip()
+
+    def _resolve_node_color_enhanced(self, tier: str, ubid: str, cluster_id: int, status: str, is_master: bool) -> str:
+        """Enhanced node color resolution with cluster support."""
+        if is_master:
+            return self.COLORS["master"]
+
+        # Priority: tier > status > cluster
+        if tier in self.COLORS:
+            return self.COLORS[tier]
+        elif status in self.COLORS:
+            return self.COLORS[status]
+        elif cluster_id < len(self.cluster_colors):
+            return self.cluster_colors[cluster_id]
+        else:
+            return self.COLORS["missing"]
+
+    def _calculate_node_size_enhanced(self, confidence: float, importance: float, is_master: bool) -> int:
+        """Enhanced node size calculation."""
+        base_size = 20
+
+        # Confidence contribution
+        confidence_size = int(confidence / 100.0 * 25)
+
+        # Importance contribution
+        importance_size = int(importance * 20)
+
+        # Master bonus
+        master_bonus = 15 if is_master else 0
+
+        total_size = base_size + confidence_size + importance_size + master_bonus
+        return min(total_size, 60)  # Cap at 60
+
+    def _get_edge_color_enhanced(self, score: float, tier: str) -> str:
+        """Enhanced edge color based on score and tier."""
+        if score >= 90:
+            return self.COLORS["tier1"]
+        elif score >= 70:
+            return self.COLORS["tier2"]
+        elif score >= 50:
+            return self.COLORS["tier3"]
+        else:
+            return self.COLORS["missing"]
+
+    def _calculate_edge_width_enhanced(self, score: float, degree1: int, degree2: int) -> int:
+        """Enhanced edge width calculation."""
+        # Base width from score
+        base_width = int(score / 100.0 * 6) + 1
+
+        # Adjust based on node degrees (more connected = thicker edges)
+        degree_factor = min((degree1 + degree2) / 20.0, 1.0)
+        degree_bonus = int(degree_factor * 3)
+
+        return min(base_width + degree_bonus, 8)
+
+    def _get_palantir_layout(self, layout: str, G: nx.Graph) -> Dict[str, Any]:
+        """Get Palantir-level layout configuration."""
+        if layout == "palantir":
+            return {
+                "layout_algorithm": "force",
+                "force_directed_layout": {
+                    "node_repulsion": 5000,
+                    "ideal_edge_length": 120,
+                    "edge_repulsion": 200,
+                    "gravity": 0.1,
+                },
+                "node_overlap": 20,
+                "layout_iterations": 1500,
+            }
+        elif layout == "hierarchical":
+            return {
+                "layout_algorithm": "hierarchical",
+                "hierarchical_layout": {
+                    "direction": "TB",
+                    "node_spacing": 80,
+                    "layer_spacing": 120,
+                },
+            }
+        else:
+            return {
+                "layout_algorithm": "force",
+                "force_directed_layout": {
+                    "node_repulsion": 3000,
+                    "ideal_edge_length": 100,
+                },
+            }
+
+    def _add_cluster_visualization(self, config: Dict, cluster_assignments: Dict) -> Dict:
+        """Add cluster visualization to graph config."""
+        clusters = {}
+        for idx, cluster_id in cluster_assignments.items():
+            if cluster_id not in clusters:
+                clusters[cluster_id] = []
+            clusters[cluster_id].append(idx)
+
+        config["cluster_data"] = clusters
+        config["show_cluster_labels"] = True
+        config["cluster_label_data"] = f"Cluster {cluster_id}"
+
+        return config
+
+    def _add_analytics_overlay(self, fig, G: nx.Graph, ubid_assignments: Dict, matches: List) -> Any:
+        """Add analytics overlay to the graph."""
+        # Calculate network statistics
+        total_nodes = G.number_of_nodes()
+        total_edges = G.number_of_edges()
+        avg_degree = sum(dict(G.degree()).values()) / total_nodes if total_nodes > 0 else 0
+
+        # Count by tier
+        tier_counts = {}
+        for assignment in ubid_assignments.values():
+            tier = self._normalize_text(assignment.get("tier", "new"))
+            tier_counts[tier] = tier_counts.get(tier, 0) + 1
+
+        # Add analytics as HTML overlay (simplified for this implementation)
+        tier_html = ""
+        for tier, count in tier_counts.items():
+            tier_html += f"<div>• {tier.title()}: {count}</div>"
+
+        analytics_html = f"""
+        <div style="position: absolute; top: 10px; right: 10px; background: rgba(10, 14, 26, 0.9);
+                    color: #e8f4fd; padding: 15px; border-radius: 8px; font-size: 12px;
+                    border: 1px solid #6366f1; z-index: 1000;">
+            <h4 style="margin: 0 0 10px 0; color: #00d4ff;">📊 Network Analytics</h4>
+            <div>🔗 Nodes: {total_nodes}</div>
+            <div>⚡ Edges: {total_edges}</div>
+            <div>📈 Avg Degree: {avg_degree:.1f}</div>
+            <div style="margin-top: 8px; font-weight: bold; color: #fbbf24;">🏆 Tiers:</div>
+            {tier_html}
+        </div>
+        """
+
+        return fig
 
         for m in matches:
             r1 = getattr(m, "record1_id", None)

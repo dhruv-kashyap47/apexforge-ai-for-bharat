@@ -53,19 +53,42 @@ class DatabaseManager:
 
     @contextmanager
     def get_connection(self):
-        """Context manager for database connections."""
+        """Context manager for database connections with retry logic."""
         if not self.engine:
             self._connect()
 
-        conn = self.engine.connect()
-        try:
-            yield conn
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise e
-        finally:
-            conn.close()
+        max_retries = 3
+        for attempt in range(max_retries):
+            conn = None
+            try:
+                conn = self.engine.connect()
+                yield conn
+                conn.commit()
+                break
+            except Exception as e:
+                if conn:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
+                if attempt == max_retries - 1:
+                    logger.error(f"Database connection failed after {max_retries} attempts: {e}")
+                    raise e
+
+                logger.warning(f"Connection attempt {attempt + 1} failed, retrying: {e}")
+                import time
+                time.sleep(0.2 * (attempt + 1))  # Brief exponential backoff
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
 
     @contextmanager
     def transaction(self):
@@ -326,6 +349,18 @@ class DatabaseManager:
             stats[key] = result[0]['count'] if result else 0
 
         return stats
+
+    def ubid_exists(self, ubid: str) -> bool:
+        """Check if a UBID already exists in the database."""
+        try:
+            result = self.execute_query(
+                "SELECT 1 FROM ubid_registry WHERE ubid = :ubid LIMIT 1",
+                {"ubid": ubid}
+            )
+            return len(result) > 0
+        except Exception as exc:
+            logger.warning(f"Failed to check UBID existence for {ubid}: {exc}")
+            return False
 
     def get_next_sequence_number(self, state_code: str, district_code: str, category: str) -> int:
         """Get the next sequence number for UBID generation."""

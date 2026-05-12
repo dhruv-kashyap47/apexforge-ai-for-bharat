@@ -182,33 +182,49 @@ class DataService:
                 continue
             ubid_groups.setdefault(ubid, {"indices": [], "assignment": assignment})["indices"].append(idx)
 
-        with self.db.get_connection() as conn:
-            for ubid, group_data in ubid_groups.items():
-                try:
-                    indices = [i for i in group_data.get("indices", []) if isinstance(i, int) and 0 <= i < len(df)]
-                    if not indices:
-                        continue
+        # Use transaction for atomic operations
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with self.db.transaction() as conn:
+                    for ubid, group_data in ubid_groups.items():
+                        try:
+                            indices = [i for i in group_data.get("indices", []) if isinstance(i, int) and 0 <= i < len(df)]
+                            if not indices:
+                                continue
 
-                    assignment = group_data["assignment"]
-                    master_idx = indices[0]
-                    master_record = df.iloc[master_idx]
-                    db_ids = [self._safe_na(df.iloc[i].get("db_id", i)) for i in indices]
-                    db_ids = [int(x) for x in db_ids if x is not None]
-                    if not db_ids:
-                        continue
+                            assignment = group_data["assignment"]
+                            master_idx = indices[0]
+                            master_record = df.iloc[master_idx]
+                            db_ids = [self._safe_na(df.iloc[i].get("db_id", i)) for i in indices]
+                            db_ids = [int(x) for x in db_ids if x is not None]
+                            if not db_ids:
+                                continue
 
-                    master_db_id = db_ids[0]
-                    self._store_ubid_registry(conn, ubid, master_record, assignment, len(indices))
-                    stored_ubids += 1
+                            master_db_id = db_ids[0]
+                            self._store_ubid_registry(conn, ubid, master_record, assignment, len(indices))
+                            stored_ubids += 1
 
-                    group_id = self._store_matched_group(conn, ubid, master_db_id, db_ids, assignment)
-                    if group_id:
-                        stored_groups += 1
-                except Exception as exc:
-                    logger.warning("Skipping UBID group %s: %s", ubid, exc)
+                            group_id = self._store_matched_group(conn, ubid, master_db_id, db_ids, assignment)
+                            if group_id:
+                                stored_groups += 1
+                        except Exception as exc:
+                            logger.warning("Skipping UBID group %s: %s", ubid, exc)
+                            continue
 
-            review_queue_items = self._store_review_queue(conn, batch_id, matches, df)
-            self._store_match_logs(conn, batch_id, matches, df)
+                    review_queue_items = self._store_review_queue(conn, batch_id, matches, df)
+                    self._store_match_logs(conn, batch_id, matches, df)
+
+                # If we get here, transaction succeeded
+                break
+
+            except Exception as exc:
+                if attempt == max_retries - 1:
+                    logger.error(f"Failed to store match results after {max_retries} attempts: {exc}")
+                    raise
+                logger.warning(f"Transaction attempt {attempt + 1} failed, retrying: {exc}")
+                import time
+                time.sleep(0.5 * (attempt + 1))  # Exponential backoff
 
         return {
             "ubids_stored": stored_ubids,
@@ -225,7 +241,7 @@ class DataService:
             INSERT INTO ubid_registry
             (ubid, state_code, district_code, category, sequence_number,
              business_name, primary_pan, primary_gstin, business_status,
-             total_records, last_activity_date, registration_date)
+             status_reason, total_records, last_activity_date, registration_date)
             VALUES
             (:ubid, :state_code, :district_code, :category, :sequence,
              :business_name, :primary_pan, :primary_gstin, :business_status,
@@ -255,7 +271,7 @@ class DataService:
             "business_name": self._safe_na(master_record.get("business_name")),
             "primary_pan": self._safe_na(master_record.get("cleaned_pan") or master_record.get("pan")),
             "primary_gstin": self._safe_na(master_record.get("cleaned_gstin") or master_record.get("gstin")),
-            "business_status": self._safe_na(master_record.get("business_status")) or "Closed",
+            "business_status": self._safe_na(master_record.get("business_status")) or "Active",
             "status_reason": self._safe_na(master_record.get("status_reason")),
             "total_records": total_records,
             "last_activity_date": self._safe_na(master_record.get("last_activity_date")),
